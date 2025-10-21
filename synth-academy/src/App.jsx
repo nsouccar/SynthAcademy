@@ -4,16 +4,23 @@ import { WaveformGraph2D } from './components/WaveformGraph2D';
 import { OscNode } from './components/OscNode';
 import { FilterNode } from './components/FilterNode';
 import { PianoNode } from './components/PianoNode';
-import { audioGraph } from './AudioGraph';
-import * as Tone from 'tone';
+import { MixerNode } from './components/MixerNode';
+import { OutputNode } from './components/OutputNode';
+import { audioGraph, setVoiceManager } from './AudioGraph';
+import { voiceManager } from './VoiceManager';
 
 import 'reactflow/dist/style.css';
+
+// Initialize the voice manager reference in AudioGraph
+setVoiceManager(voiceManager);
 
 // Register node types outside component to avoid warning
 const nodeTypes = {
   oscNode: OscNode,
   filterNode: FilterNode,
-  pianoNode: PianoNode
+  pianoNode: PianoNode,
+  mixerNode: MixerNode,
+  outputNode: OutputNode
 };
 
 export default function App() {
@@ -87,21 +94,16 @@ export default function App() {
     audioGraph.syncConnections(edges);
   }, [edges]);
 
+  // Scan for voice templates whenever nodes or edges change
+  useEffect(() => {
+    audioGraph.scanForVoiceTemplates(nodes, edges);
+  }, [nodes, edges]);
+
   // Cleanup audio graph on unmount
   useEffect(() => {
     return () => {
       audioGraph.cleanup();
     };
-  }, []);
-
-  // Handle node click to play sound
-  const onNodeClick = useCallback(async (event, node) => {
-    await Tone.start();
-    // Trigger a custom event that the node can listen to
-    const nodeElement = event.target.closest('.react-flow__node');
-    if (nodeElement) {
-      nodeElement.dispatchEvent(new CustomEvent('playSound'));
-    }
   }, []);
 
   // Add a filter node at the center of the viewport
@@ -123,6 +125,30 @@ export default function App() {
       id,
       type: 'pianoNode',
       position: { x: 250, y: 250 },
+      data: {},
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }, []);
+
+  // Add a mixer node
+  const addMixerNode = useCallback(() => {
+    const id = `mixer-${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'mixerNode',
+      position: { x: 250, y: 400 },
+      data: {},
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }, []);
+
+  // Add an output node
+  const addOutputNode = useCallback(() => {
+    const id = `output-${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'outputNode',
+      position: { x: 500, y: 250 },
       data: {},
     };
     setNodes((nds) => [...nds, newNode]);
@@ -177,6 +203,36 @@ export default function App() {
           >
             + Add Piano
           </button>
+
+          <button
+            onClick={addMixerNode}
+            style={{
+              padding: '8px 16px',
+              background: '#0f0',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Add Mixer
+          </button>
+
+          <button
+            onClick={addOutputNode}
+            style={{
+              padding: '8px 16px',
+              background: '#f0f',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Add Output
+          </button>
         </div>
 
         <ReactFlow
@@ -185,7 +241,6 @@ export default function App() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
-          onNodeClick={onNodeClick}
           nodeTypes={nodeTypes}
           fitView
         >

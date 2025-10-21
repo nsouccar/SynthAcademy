@@ -106,38 +106,6 @@ export function OscNode({ data, id }) {
         };
     }, [id, data.waveform, data.waveformData]);
 
-    // Listen for play sound event from ReactFlow's onNodeClick
-    useEffect(() => {
-        const playSound = () => {
-            console.log('Node clicked!'); // Debug log
-
-            if (!synthRef.current) {
-                console.log('No synth ref');
-                return;
-            }
-
-            console.log('Playing sound');
-
-            // Play the sound
-            synthRef.current.volume.rampTo(-10, 0.05);
-
-            // Stop after 500ms
-            setTimeout(() => {
-                if (synthRef.current) {
-                    synthRef.current.volume.rampTo(-Infinity, 0.2);
-                }
-            }, 500);
-        };
-
-        const node = nodeRef.current;
-        if (node) {
-            node.addEventListener('playSound', playSound);
-            return () => {
-                node.removeEventListener('playSound', playSound);
-            };
-        }
-    }, []);
-
     // Determine label based on waveform type
     const getLabel = () => {
         if (data.waveform === 'custom') {

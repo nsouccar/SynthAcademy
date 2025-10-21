@@ -326,9 +326,9 @@ export function WaveformGraph2D() {
             cancelAnimationFrame(rafIdRef.current);
             rafIdRef.current = null;
         }
-        // Keep oscillator running but mute it smoothly
+        // Keep oscillator running but mute it completely
         if (synthRef.current?.osc) {
-            synthRef.current.osc.volume.rampTo(-60, 0.1);
+            synthRef.current.osc.volume.rampTo(-Infinity, 0.1);
         }
         // Don't collapse - just stop the audio
     };
@@ -402,7 +402,14 @@ export function WaveformGraph2D() {
                     }}>
                         <div style={{ color: "#ccc", fontWeight: "bold" }}>Audio Graph</div>
                         <button
-                            onClick={() => setIsExpanded(false)}
+                            onClick={() => {
+                                // Stop audio and mute completely before closing
+                                if (synthRef.current?.osc) {
+                                    synthRef.current.osc.volume.value = -Infinity;
+                                }
+                                isPlayingRef.current = false;
+                                setIsExpanded(false);
+                            }}
                             style={{
                                 background: "#2a2a2a",
                                 border: "1px solid #444",
