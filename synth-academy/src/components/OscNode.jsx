@@ -68,7 +68,7 @@ export function OscNode({ data, id }) {
     useEffect(() => {
         // Create oscillator but don't connect to destination yet
         const synth = new Tone.Oscillator(440, data.waveform || 'sine');
-        synth.volume.value = -60; // Start muted
+        synth.volume.value = -Infinity; // Start completely silent
         synthRef.current = synth;
 
         // Start the oscillator first
@@ -124,7 +124,7 @@ export function OscNode({ data, id }) {
             // Stop after 500ms
             setTimeout(() => {
                 if (synthRef.current) {
-                    synthRef.current.volume.rampTo(-60, 0.2);
+                    synthRef.current.volume.rampTo(-Infinity, 0.2);
                 }
             }, 500);
         };
