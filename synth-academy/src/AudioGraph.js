@@ -24,6 +24,9 @@ class AudioGraph {
 
     // Map of controller IDs to arrays of controlled node IDs
     this.controlConnections = new Map();
+
+    // Event listeners for template changes
+    this.eventListeners = new Map();
   }
 
   /**
@@ -85,12 +88,15 @@ class AudioGraph {
   }
 
   /**
-   * Connect two nodes (audio or control)
+   * Connect two nodes (audio, control, or monitor)
    * @param {string} sourceId - Source node ID
    * @param {string} targetId - Target node ID
+   * @param {string} sourceHandle - Source handle ID (e.g., 'audio-out', 'monitor-out')
+   * @param {string} targetHandle - Target handle ID
    */
-  connect(sourceId, targetId) {
+  connect(sourceId, targetId, sourceHandle = 'audio-out', targetHandle = null) {
     const sourceMetadata = this.nodeMetadata.get(sourceId);
+    const targetMetadata = this.nodeMetadata.get(targetId);
     const source = this.audioNodes.get(sourceId);
     const target = this.audioNodes.get(targetId);
 
@@ -110,6 +116,18 @@ class AudioGraph {
       return;
     }
 
+    // Check if this is a monitor connection
+    const isMonitorConnection = sourceHandle === 'monitor-out' || targetMetadata?.isMonitor;
+
+    if (isMonitorConnection) {
+      // For monitor connections, just tap the signal (don't affect main routing)
+      // The source continues to output to its regular destination
+      source.connect(target);
+      console.log(`Monitor tap: ${sourceId} -> ${targetId} (${sourceHandle})`);
+      return;
+    }
+
+    // Normal audio connection - affects routing
     // Disconnect from destination if this is the first connection
     if (this.connections.get(sourceId).size === 0) {
       try {
@@ -244,10 +262,20 @@ class AudioGraph {
    * @param {Array} edges - ReactFlow edges array
    */
   syncConnections(edges) {
-    // Build a set of current edge connections
+    // Build a set of current edge connections with handle info
     const currentEdges = new Set(
       edges.map(edge => `${edge.source}->${edge.target}`)
     );
+
+    // Build a map of edges with their handle info
+    const edgeHandles = new Map();
+    edges.forEach(edge => {
+      const key = `${edge.source}->${edge.target}`;
+      edgeHandles.set(key, {
+        sourceHandle: edge.sourceHandle || 'audio-out',
+        targetHandle: edge.targetHandle
+      });
+    });
 
     // Build a set of audio graph connections
     const audioConnections = new Set();
@@ -261,7 +289,8 @@ class AudioGraph {
     currentEdges.forEach(edgeKey => {
       if (!audioConnections.has(edgeKey)) {
         const [source, target] = edgeKey.split('->');
-        this.connect(source, target);
+        const handles = edgeHandles.get(edgeKey);
+        this.connect(source, target, handles.sourceHandle, handles.targetHandle);
       }
     });
 
@@ -307,6 +336,7 @@ class AudioGraph {
 
       if (template && template.nodes.length > 0) {
         console.log(`Registering voice template for output ${outputNode.id}:`, template);
+        console.log('Canvas node IDs in template:', template.nodes.map(n => n.canvasNodeId));
         voiceManagerInstance.registerVoiceTemplate(outputNode.id, template);
       }
     });
@@ -371,7 +401,8 @@ class AudioGraph {
         const node = nodes.find(n => n.id === nodeId);
         return {
           type: node.type,
-          data: node.data || {}
+          data: node.data || {},
+          canvasNodeId: nodeId  // Store the canvas node ID for voice routing
         };
       }),
       connections: []
@@ -442,6 +473,36 @@ class AudioGraph {
    */
   getPrimaryVoiceTemplateId() {
     return this.primaryVoiceTemplateId;
+  }
+
+  /**
+   * Notify that a node parameter has changed
+   * This updates both the template and active voices
+   *
+   * @param {string} nodeId - Node ID that changed
+   * @param {string} nodeType - Type of node (e.g., 'filterNode')
+   * @param {string} paramName - Parameter name (e.g., 'frequency')
+   * @param {*} paramValue - New parameter value
+   */
+  notifyParameterChange(nodeId, nodeType, paramName, paramValue) {
+    // Find which template(s) this node belongs to
+    if (!voiceManagerInstance) {
+      return;
+    }
+
+    // Update all templates that contain this node
+    // For now, update all templates (simple approach)
+    // In a more complex system, you'd track which nodes belong to which templates
+    const templateId = this.primaryVoiceTemplateId;
+
+    if (templateId) {
+      voiceManagerInstance.updateActiveVoiceParameter(
+        templateId,
+        nodeType,
+        paramName,
+        paramValue
+      );
+    }
   }
 
   /**

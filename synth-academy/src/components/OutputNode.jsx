@@ -77,6 +77,14 @@ export function OutputNode({ id }) {
             }}>
                 🔊
             </div>
+
+            {/* Monitor output (bottom) - for connecting to TV/Scope */}
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                id="monitor-out"
+                style={{ background: '#0f0' }}
+            />
         </div>
     );
 }

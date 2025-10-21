@@ -134,7 +134,15 @@ export function OscNode({ data, id }) {
             <Handle type="target" position={Position.Left} style={{ background: '#0af' }} />
 
             {/* Output handle on the right for audio */}
-            <Handle type="source" position={Position.Right} style={{ background: '#0f0' }} />
+            <Handle type="source" position={Position.Right} id="audio-out" style={{ background: '#0f0' }} />
+
+            {/* Monitor output (bottom) - for connecting to TV/Scope */}
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                id="monitor-out"
+                style={{ background: '#0f0' }}
+            />
 
             {label ? (
                 <>

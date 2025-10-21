@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
 import { audioGraph } from '../AudioGraph';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useReactFlow } from 'reactflow';
 
-export function MixerNode({ id }) {
+export function MixerNode({ id, data }) {
     const channelRef = useRef(null);
-    const [volume, setVolume] = useState(0); // 0 dB
+    const { setNodes } = useReactFlow();
+
+    // Initialize state from node data if available, otherwise use defaults
+    const [volume, setVolume] = useState(data?.volume ?? 0); // 0 dB
 
     useEffect(() => {
         // Create a Channel (combines multiple inputs into one output)
@@ -34,7 +37,26 @@ export function MixerNode({ id }) {
         if (channelRef.current) {
             channelRef.current.volume.value = volume;
         }
-    }, [volume]);
+
+        // Update the node's data in ReactFlow so templates get the new values
+        setNodes((nodes) =>
+            nodes.map((node) => {
+                if (node.id === id) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            volume: volume,
+                        },
+                    };
+                }
+                return node;
+            })
+        );
+
+        // Notify AudioGraph so it can update active voices
+        audioGraph.notifyParameterChange(id, 'mixerNode', 'volume', volume);
+    }, [volume, id, setNodes]);
 
     return (
         <div
@@ -90,7 +112,15 @@ export function MixerNode({ id }) {
             </div>
 
             {/* Output handle on the right */}
-            <Handle type="source" position={Position.Right} style={{ background: '#0f0' }} />
+            <Handle type="source" position={Position.Right} id="audio-out" style={{ background: '#0f0' }} />
+
+            {/* Monitor output (bottom) - for connecting to TV/Scope */}
+            <Handle
+                type="source"
+                position={Position.Bottom}
+                id="monitor-out"
+                style={{ background: '#0f0' }}
+            />
         </div>
     );
 }
