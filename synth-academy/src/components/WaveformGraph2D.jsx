@@ -266,6 +266,8 @@ export function WaveformGraph2D() {
     }, []);
 
     const startAudio = async (e) => {
+        if (!e.currentTarget) return;
+
         await Tone.start();
         setDragging(true);
         isPlayingRef.current = true;
@@ -288,7 +290,7 @@ export function WaveformGraph2D() {
 
     const handleClick = async (e) => {
         // Only handle click if not currently dragging
-        if (!isDragging) {
+        if (!isDragging && e.currentTarget) {
             await Tone.start();
             isPlayingRef.current = true;
             if (synthRef.current?.osc.state !== "started") {

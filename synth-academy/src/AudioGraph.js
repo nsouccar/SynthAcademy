@@ -226,8 +226,8 @@ class AudioGraph {
     controlledNodes.forEach(nodeId => {
       const audioNode = this.audioNodes.get(nodeId);
       if (audioNode && audioNode.volume) {
-        // Mute the oscillator
-        audioNode.volume.rampTo(-60, 0.2);
+        // Mute the oscillator completely
+        audioNode.volume.rampTo(-Infinity, 0.2);
       }
     });
   }
