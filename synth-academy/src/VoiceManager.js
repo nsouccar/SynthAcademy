@@ -114,33 +114,38 @@ class VoiceManager {
 
     console.log(`Stopping voice ${voiceId}`);
 
-    // Cleanup all nodes in this voice
-    voice.nodes.forEach(node => {
-      if (node.audioNode) {
-        // Only cleanup nodes that belong to this voice (not shared canvas nodes)
-        if (!node.isCanvasNode) {
-          // Disconnect
-          node.audioNode.disconnect();
-
-          // Stop if it's a source
-          if (node.audioNode.stop) {
-            node.audioNode.stop();
-          }
-
-          // Dispose
-          if (node.audioNode.dispose) {
-            node.audioNode.dispose();
-          }
-        } else {
-          // For canvas nodes, just disconnect this voice's contribution
-          // but don't stop or dispose (other voices might be using it)
-          node.audioNode.disconnect();
-        }
-      }
-    });
-
-    // Remove from active voices
+    // Remove from active voices immediately (don't wait for cleanup)
     this.activeVoices.delete(voiceId);
+
+    // Cleanup all nodes in this voice (async to avoid blocking)
+    voice.nodes.forEach(node => {
+      if (node.audioNode && !node.isCanvasNode) {
+        // Only cleanup nodes that belong to this voice (not shared canvas nodes)
+
+        // Stop the source first (immediate)
+        if (node.audioNode.stop) {
+          try {
+            node.audioNode.stop();
+          } catch (e) {
+            // Ignore if already stopped
+          }
+        }
+
+        // Disconnect and dispose asynchronously (non-blocking)
+        setTimeout(() => {
+          try {
+            node.audioNode.disconnect();
+            if (node.audioNode.dispose) {
+              node.audioNode.dispose();
+            }
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        }, 0);
+      }
+      // For canvas nodes (filters/mixers), do NOTHING
+      // They stay connected and are shared across all voices
+    });
   }
 
   /**
@@ -156,7 +161,7 @@ class VoiceManager {
     const voiceNodes = [];
 
     // Create each node in the template
-    template.nodes.forEach((nodeTemplate, index) => {
+    template.nodes.forEach((nodeTemplate) => {
       let audioNode = null;
       let isCanvasNode = false;
 
@@ -164,6 +169,11 @@ class VoiceManager {
         case 'oscNode':
           // OSCILLATORS: Create new one for each voice (need different frequencies)
           audioNode = new Tone.Oscillator(frequency, nodeTemplate.data.waveform || 'sine');
+
+          // Apply detune if specified (in cents, e.g., +10 or -5)
+          if (nodeTemplate.data.detune) {
+            audioNode.detune.value = nodeTemplate.data.detune;
+          }
 
           // Set custom waveform if provided
           if (nodeTemplate.data.waveformData) {

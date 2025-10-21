@@ -6,7 +6,6 @@ import { FilterNode } from './components/FilterNode';
 import { PianoNode } from './components/PianoNode';
 import { MixerNode } from './components/MixerNode';
 import { OutputNode } from './components/OutputNode';
-import { TVNode } from './components/TVNode';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 
@@ -21,8 +20,7 @@ const nodeTypes = {
   filterNode: FilterNode,
   pianoNode: PianoNode,
   mixerNode: MixerNode,
-  outputNode: OutputNode,
-  tvNode: TVNode
+  outputNode: OutputNode
 };
 
 export default function App() {
@@ -156,18 +154,6 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   }, []);
 
-  // Add a TV node
-  const addTVNode = useCallback(() => {
-    const id = `tv-${Date.now()}`;
-    const newNode = {
-      id,
-      type: 'tvNode',
-      position: { x: 250, y: 500 },
-      data: {},
-    };
-    setNodes((nds) => [...nds, newNode]);
-  }, []);
-
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
       {/* Sidebar with WaveformGraph2D */}
@@ -246,21 +232,6 @@ export default function App() {
             }}
           >
             + Add Output
-          </button>
-
-          <button
-            onClick={addTVNode}
-            style={{
-              padding: '8px 16px',
-              background: '#0f0',
-              color: '#000',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
-            📺 Add TV
           </button>
         </div>
 

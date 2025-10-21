@@ -112,15 +112,7 @@ export function MixerNode({ id, data }) {
             </div>
 
             {/* Output handle on the right */}
-            <Handle type="source" position={Position.Right} id="audio-out" style={{ background: '#0f0' }} />
-
-            {/* Monitor output (bottom) - for connecting to TV/Scope */}
-            <Handle
-                type="source"
-                position={Position.Bottom}
-                id="monitor-out"
-                style={{ background: '#0f0' }}
-            />
+            <Handle type="source" position={Position.Right} style={{ background: '#0f0' }} />
         </div>
     );
 }

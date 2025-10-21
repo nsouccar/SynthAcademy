@@ -107,15 +107,7 @@ export function FilterNode({ id, data }) {
                 />
             </div>
 
-            <Handle type="source" position={Position.Right} id="audio-out" />
-
-            {/* Monitor output (bottom) - for connecting to TV/Scope */}
-            <Handle
-                type="source"
-                position={Position.Bottom}
-                id="monitor-out"
-                style={{ background: '#0f0' }}
-            />
+            <Handle type="source" position={Position.Right} />
         </div>
     );
 }

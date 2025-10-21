@@ -88,15 +88,12 @@ class AudioGraph {
   }
 
   /**
-   * Connect two nodes (audio, control, or monitor)
+   * Connect two nodes (audio or control)
    * @param {string} sourceId - Source node ID
    * @param {string} targetId - Target node ID
-   * @param {string} sourceHandle - Source handle ID (e.g., 'audio-out', 'monitor-out')
-   * @param {string} targetHandle - Target handle ID
    */
-  connect(sourceId, targetId, sourceHandle = 'audio-out', targetHandle = null) {
+  connect(sourceId, targetId) {
     const sourceMetadata = this.nodeMetadata.get(sourceId);
-    const targetMetadata = this.nodeMetadata.get(targetId);
     const source = this.audioNodes.get(sourceId);
     const target = this.audioNodes.get(targetId);
 
@@ -116,18 +113,6 @@ class AudioGraph {
       return;
     }
 
-    // Check if this is a monitor connection
-    const isMonitorConnection = sourceHandle === 'monitor-out' || targetMetadata?.isMonitor;
-
-    if (isMonitorConnection) {
-      // For monitor connections, just tap the signal (don't affect main routing)
-      // The source continues to output to its regular destination
-      source.connect(target);
-      console.log(`Monitor tap: ${sourceId} -> ${targetId} (${sourceHandle})`);
-      return;
-    }
-
-    // Normal audio connection - affects routing
     // Disconnect from destination if this is the first connection
     if (this.connections.get(sourceId).size === 0) {
       try {
@@ -262,20 +247,10 @@ class AudioGraph {
    * @param {Array} edges - ReactFlow edges array
    */
   syncConnections(edges) {
-    // Build a set of current edge connections with handle info
+    // Build a set of current edge connections
     const currentEdges = new Set(
       edges.map(edge => `${edge.source}->${edge.target}`)
     );
-
-    // Build a map of edges with their handle info
-    const edgeHandles = new Map();
-    edges.forEach(edge => {
-      const key = `${edge.source}->${edge.target}`;
-      edgeHandles.set(key, {
-        sourceHandle: edge.sourceHandle || 'audio-out',
-        targetHandle: edge.targetHandle
-      });
-    });
 
     // Build a set of audio graph connections
     const audioConnections = new Set();
@@ -289,8 +264,7 @@ class AudioGraph {
     currentEdges.forEach(edgeKey => {
       if (!audioConnections.has(edgeKey)) {
         const [source, target] = edgeKey.split('->');
-        const handles = edgeHandles.get(edgeKey);
-        this.connect(source, target, handles.sourceHandle, handles.targetHandle);
+        this.connect(source, target);
       }
     });
 
@@ -336,7 +310,6 @@ class AudioGraph {
 
       if (template && template.nodes.length > 0) {
         console.log(`Registering voice template for output ${outputNode.id}:`, template);
-        console.log('Canvas node IDs in template:', template.nodes.map(n => n.canvasNodeId));
         voiceManagerInstance.registerVoiceTemplate(outputNode.id, template);
       }
     });
