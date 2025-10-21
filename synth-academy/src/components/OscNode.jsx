@@ -162,8 +162,11 @@ export function OscNode({ data, id }) {
                 cursor: 'pointer',
             }}
         >
-            {/* Output handle on the right */}
-            <Handle type="source" position={Position.Right} />
+            {/* Input handle on the left for control signals (e.g., from piano) */}
+            <Handle type="target" position={Position.Left} style={{ background: '#0af' }} />
+
+            {/* Output handle on the right for audio */}
+            <Handle type="source" position={Position.Right} style={{ background: '#0f0' }} />
 
             {label ? (
                 <>

@@ -3,6 +3,7 @@ import ReactFlow, { addEdge, Background, Controls, applyNodeChanges, applyEdgeCh
 import { WaveformGraph2D } from './components/WaveformGraph2D';
 import { OscNode } from './components/OscNode';
 import { FilterNode } from './components/FilterNode';
+import { PianoNode } from './components/PianoNode';
 import { audioGraph } from './AudioGraph';
 import * as Tone from 'tone';
 
@@ -11,7 +12,8 @@ import 'reactflow/dist/style.css';
 // Register node types outside component to avoid warning
 const nodeTypes = {
   oscNode: OscNode,
-  filterNode: FilterNode
+  filterNode: FilterNode,
+  pianoNode: PianoNode
 };
 
 export default function App() {
@@ -114,6 +116,18 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   }, []);
 
+  // Add a piano node
+  const addPianoNode = useCallback(() => {
+    const id = `piano-${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'pianoNode',
+      position: { x: 250, y: 250 },
+      data: {},
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }, []);
+
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
       {/* Sidebar with WaveformGraph2D */}
@@ -125,25 +139,45 @@ export default function App() {
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
-        {/* Add Filter button */}
-        <button
-          onClick={addFilterNode}
-          style={{
-            position: 'absolute',
-            top: 10,
-            left: 10,
-            zIndex: 10,
-            padding: '8px 16px',
-            background: '#f90',
-            color: '#000',
-            border: 'none',
-            borderRadius: 4,
-            cursor: 'pointer',
-            fontWeight: 'bold',
-          }}
-        >
-          + Add Filter
-        </button>
+        {/* Add node buttons */}
+        <div style={{
+          position: 'absolute',
+          top: 10,
+          left: 10,
+          zIndex: 10,
+          display: 'flex',
+          gap: 8,
+        }}>
+          <button
+            onClick={addFilterNode}
+            style={{
+              padding: '8px 16px',
+              background: '#f90',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Add Filter
+          </button>
+
+          <button
+            onClick={addPianoNode}
+            style={{
+              padding: '8px 16px',
+              background: '#0af',
+              color: '#000',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Add Piano
+          </button>
+        </div>
 
         <ReactFlow
           nodes={nodes}

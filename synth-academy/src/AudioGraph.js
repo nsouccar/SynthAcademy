@@ -11,16 +11,28 @@ class AudioGraph {
 
     // Map of node IDs to their output connections (for tracking)
     this.connections = new Map();
+
+    // Map of node IDs to their node type and metadata
+    this.nodeMetadata = new Map();
+
+    // Map of controller IDs to arrays of controlled node IDs
+    this.controlConnections = new Map();
   }
 
   /**
    * Register a new audio node
    * @param {string} nodeId - ReactFlow node ID
    * @param {object} audioNode - Tone.js audio object (Oscillator, Filter, etc.)
+   * @param {object} metadata - Node metadata (type, isController, etc.)
    */
-  registerNode(nodeId, audioNode) {
+  registerNode(nodeId, audioNode, metadata = {}) {
     this.audioNodes.set(nodeId, audioNode);
     this.connections.set(nodeId, new Set());
+    this.nodeMetadata.set(nodeId, metadata);
+
+    if (metadata.isController) {
+      this.controlConnections.set(nodeId, []);
+    }
   }
 
   /**
@@ -48,22 +60,44 @@ class AudioGraph {
     // Remove from tracking
     this.audioNodes.delete(nodeId);
     this.connections.delete(nodeId);
+    this.nodeMetadata.delete(nodeId);
+    this.controlConnections.delete(nodeId);
 
     // Remove any connections pointing to this node
     this.connections.forEach((targetSet) => {
       targetSet.delete(nodeId);
     });
+
+    // Remove any control connections pointing to this node
+    this.controlConnections.forEach((targets) => {
+      const index = targets.indexOf(nodeId);
+      if (index > -1) {
+        targets.splice(index, 1);
+      }
+    });
   }
 
   /**
-   * Connect two audio nodes
+   * Connect two nodes (audio or control)
    * @param {string} sourceId - Source node ID
    * @param {string} targetId - Target node ID
    */
   connect(sourceId, targetId) {
+    const sourceMetadata = this.nodeMetadata.get(sourceId);
     const source = this.audioNodes.get(sourceId);
     const target = this.audioNodes.get(targetId);
 
+    // Handle control connections (e.g., Piano -> Oscillator)
+    if (sourceMetadata?.isController) {
+      if (!this.controlConnections.has(sourceId)) {
+        this.controlConnections.set(sourceId, []);
+      }
+      this.controlConnections.get(sourceId).push(targetId);
+      console.log(`Control connection: ${sourceId} -> ${targetId}`);
+      return;
+    }
+
+    // Handle audio connections
     if (!source || !target) {
       console.warn(`Cannot connect: source=${!!source}, target=${!!target}`);
       return;
@@ -84,15 +118,34 @@ class AudioGraph {
     // Track the connection
     this.connections.get(sourceId).add(targetId);
 
-    console.log(`Connected ${sourceId} -> ${targetId}`);
+    console.log(`Audio connection: ${sourceId} -> ${targetId}`);
   }
 
   /**
-   * Disconnect two audio nodes
+   * Disconnect two nodes (audio or control)
    * @param {string} sourceId - Source node ID
    * @param {string} targetId - Target node ID (optional, disconnects all if not provided)
    */
   disconnect(sourceId, targetId = null) {
+    const sourceMetadata = this.nodeMetadata.get(sourceId);
+
+    // Handle control disconnections
+    if (sourceMetadata?.isController) {
+      if (targetId) {
+        const controlTargets = this.controlConnections.get(sourceId) || [];
+        const index = controlTargets.indexOf(targetId);
+        if (index > -1) {
+          controlTargets.splice(index, 1);
+          console.log(`Control disconnection: ${sourceId} -> ${targetId}`);
+        }
+      } else {
+        this.controlConnections.set(sourceId, []);
+        console.log(`${sourceId} disconnected from all controlled nodes`);
+      }
+      return;
+    }
+
+    // Handle audio disconnections
     const source = this.audioNodes.get(sourceId);
 
     if (!source) {
@@ -106,7 +159,7 @@ class AudioGraph {
       if (target) {
         source.disconnect(target);
         this.connections.get(sourceId).delete(targetId);
-        console.log(`Disconnected ${sourceId} -> ${targetId}`);
+        console.log(`Audio disconnection: ${sourceId} -> ${targetId}`);
       }
 
       // If no more connections, connect back to destination
@@ -130,6 +183,53 @@ class AudioGraph {
    */
   getAudioNode(nodeId) {
     return this.audioNodes.get(nodeId) || null;
+  }
+
+  /**
+   * Get controlled nodes for a controller
+   * @param {string} controllerId - Controller node ID
+   * @returns {Array} - Array of controlled node IDs
+   */
+  getControlledNodes(controllerId) {
+    return this.controlConnections.get(controllerId) || [];
+  }
+
+  /**
+   * Trigger note on controlled oscillators
+   * @param {string} controllerId - Controller node ID
+   * @param {number} frequency - Frequency to trigger
+   */
+  triggerControlledNodes(controllerId, frequency) {
+    const controlledNodes = this.getControlledNodes(controllerId);
+
+    controlledNodes.forEach(nodeId => {
+      const audioNode = this.audioNodes.get(nodeId);
+      if (audioNode && audioNode.frequency) {
+        // Set frequency for oscillators
+        audioNode.frequency.setValueAtTime(frequency, audioNode.context.currentTime);
+
+        // Unmute the oscillator
+        if (audioNode.volume) {
+          audioNode.volume.rampTo(-10, 0.02);
+        }
+      }
+    });
+  }
+
+  /**
+   * Release note on controlled oscillators
+   * @param {string} controllerId - Controller node ID
+   */
+  releaseControlledNodes(controllerId) {
+    const controlledNodes = this.getControlledNodes(controllerId);
+
+    controlledNodes.forEach(nodeId => {
+      const audioNode = this.audioNodes.get(nodeId);
+      if (audioNode && audioNode.volume) {
+        // Mute the oscillator
+        audioNode.volume.rampTo(-60, 0.2);
+      }
+    });
   }
 
   /**
