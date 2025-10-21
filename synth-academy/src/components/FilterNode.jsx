@@ -1,12 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
 import { audioGraph } from '../AudioGraph';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useReactFlow } from 'reactflow';
 
-export function FilterNode({ id }) {
+export function FilterNode({ id, data }) {
     const filterRef = useRef(null);
-    const [frequency, setFrequency] = useState(1000);
-    const [filterType, setFilterType] = useState('lowpass');
+    const { setNodes } = useReactFlow();
+
+    // Initialize state from node data if available, otherwise use defaults
+    const [frequency, setFrequency] = useState(data?.frequency || 1000);
+    const [filterType, setFilterType] = useState(data?.type || 'lowpass');
 
     useEffect(() => {
         // Create a filter node
@@ -32,7 +35,28 @@ export function FilterNode({ id }) {
             filterRef.current.frequency.value = frequency;
             filterRef.current.type = filterType;
         }
-    }, [frequency, filterType]);
+
+        // Update the node's data in ReactFlow so templates get the new values
+        setNodes((nodes) =>
+            nodes.map((node) => {
+                if (node.id === id) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            frequency: frequency,
+                            type: filterType,
+                        },
+                    };
+                }
+                return node;
+            })
+        );
+
+        // Notify AudioGraph so it can update active voices
+        audioGraph.notifyParameterChange(id, 'filterNode', 'frequency', frequency);
+        audioGraph.notifyParameterChange(id, 'filterNode', 'type', filterType);
+    }, [frequency, filterType, id, setNodes]);
 
     return (
         <div

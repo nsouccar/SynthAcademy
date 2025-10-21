@@ -1,12 +1,16 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import * as Tone from 'tone';
 import { audioGraph } from '../AudioGraph';
-import { Handle, Position } from 'reactflow';
+import { Handle, Position, useReactFlow } from 'reactflow';
 
 export function OscNode({ data, id }) {
     const synthRef = useRef(null);
     const canvasRef = useRef(null);
     const nodeRef = useRef(null);
+    const { setNodes } = useReactFlow();
+
+    // Detune amount in cents (±50 cents range)
+    const [detune, setDetune] = useState(data?.detune || 0);
 
     // Draw waveform visualization
     useEffect(() => {
@@ -106,6 +110,24 @@ export function OscNode({ data, id }) {
         };
     }, [id, data.waveform, data.waveformData]);
 
+    // Update node data when detune changes
+    useEffect(() => {
+        setNodes((nodes) =>
+            nodes.map((node) => {
+                if (node.id === id) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            detune: detune,
+                        },
+                    };
+                }
+                return node;
+            })
+        );
+    }, [detune, id, setNodes]);
+
     // Determine label based on waveform type
     const getLabel = () => {
         if (data.waveform === 'custom') {
@@ -157,6 +179,21 @@ export function OscNode({ data, id }) {
                     <p style={{ fontSize: '0.8em' }}>Oscillator</p>
                 </>
             )}
+
+            {/* Detune slider */}
+            <div style={{ marginTop: 8, fontSize: '0.75em' }}>
+                <label style={{ display: 'block', marginBottom: 4 }}>
+                    Detune: {detune > 0 ? '+' : ''}{detune}¢
+                </label>
+                <input
+                    type="range"
+                    min="-50"
+                    max="50"
+                    value={detune}
+                    onChange={(e) => setDetune(Number(e.target.value))}
+                    style={{ width: '100%' }}
+                />
+            </div>
         </div>
     );
 }

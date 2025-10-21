@@ -24,6 +24,9 @@ class AudioGraph {
 
     // Map of controller IDs to arrays of controlled node IDs
     this.controlConnections = new Map();
+
+    // Event listeners for template changes
+    this.eventListeners = new Map();
   }
 
   /**
@@ -371,7 +374,8 @@ class AudioGraph {
         const node = nodes.find(n => n.id === nodeId);
         return {
           type: node.type,
-          data: node.data || {}
+          data: node.data || {},
+          canvasNodeId: nodeId  // Store the canvas node ID for voice routing
         };
       }),
       connections: []
@@ -442,6 +446,36 @@ class AudioGraph {
    */
   getPrimaryVoiceTemplateId() {
     return this.primaryVoiceTemplateId;
+  }
+
+  /**
+   * Notify that a node parameter has changed
+   * This updates both the template and active voices
+   *
+   * @param {string} nodeId - Node ID that changed
+   * @param {string} nodeType - Type of node (e.g., 'filterNode')
+   * @param {string} paramName - Parameter name (e.g., 'frequency')
+   * @param {*} paramValue - New parameter value
+   */
+  notifyParameterChange(nodeId, nodeType, paramName, paramValue) {
+    // Find which template(s) this node belongs to
+    if (!voiceManagerInstance) {
+      return;
+    }
+
+    // Update all templates that contain this node
+    // For now, update all templates (simple approach)
+    // In a more complex system, you'd track which nodes belong to which templates
+    const templateId = this.primaryVoiceTemplateId;
+
+    if (templateId) {
+      voiceManagerInstance.updateActiveVoiceParameter(
+        templateId,
+        nodeType,
+        paramName,
+        paramValue
+      );
+    }
   }
 
   /**

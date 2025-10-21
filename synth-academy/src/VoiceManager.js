@@ -1,4 +1,5 @@
 import * as Tone from 'tone';
+import { audioGraph } from './AudioGraph';
 
 /**
  * VoiceManager handles the creation and management of synthesizer voices.
@@ -113,26 +114,38 @@ class VoiceManager {
 
     console.log(`Stopping voice ${voiceId}`);
 
-    // Cleanup all nodes in this voice
-    voice.nodes.forEach(node => {
-      if (node.audioNode) {
-        // Disconnect
-        node.audioNode.disconnect();
-
-        // Stop if it's a source
-        if (node.audioNode.stop) {
-          node.audioNode.stop();
-        }
-
-        // Dispose
-        if (node.audioNode.dispose) {
-          node.audioNode.dispose();
-        }
-      }
-    });
-
-    // Remove from active voices
+    // Remove from active voices immediately (don't wait for cleanup)
     this.activeVoices.delete(voiceId);
+
+    // Cleanup all nodes in this voice (async to avoid blocking)
+    voice.nodes.forEach(node => {
+      if (node.audioNode && !node.isCanvasNode) {
+        // Only cleanup nodes that belong to this voice (not shared canvas nodes)
+
+        // Stop the source first (immediate)
+        if (node.audioNode.stop) {
+          try {
+            node.audioNode.stop();
+          } catch (e) {
+            // Ignore if already stopped
+          }
+        }
+
+        // Disconnect and dispose asynchronously (non-blocking)
+        setTimeout(() => {
+          try {
+            node.audioNode.disconnect();
+            if (node.audioNode.dispose) {
+              node.audioNode.dispose();
+            }
+          } catch (e) {
+            // Ignore cleanup errors
+          }
+        }, 0);
+      }
+      // For canvas nodes (filters/mixers), do NOTHING
+      // They stay connected and are shared across all voices
+    });
   }
 
   /**
@@ -148,13 +161,19 @@ class VoiceManager {
     const voiceNodes = [];
 
     // Create each node in the template
-    template.nodes.forEach((nodeTemplate, index) => {
+    template.nodes.forEach((nodeTemplate) => {
       let audioNode = null;
+      let isCanvasNode = false;
 
       switch (nodeTemplate.type) {
         case 'oscNode':
-          // Create oscillator
+          // OSCILLATORS: Create new one for each voice (need different frequencies)
           audioNode = new Tone.Oscillator(frequency, nodeTemplate.data.waveform || 'sine');
+
+          // Apply detune if specified (in cents, e.g., +10 or -5)
+          if (nodeTemplate.data.detune) {
+            audioNode.detune.value = nodeTemplate.data.detune;
+          }
 
           // Set custom waveform if provided
           if (nodeTemplate.data.waveformData) {
@@ -179,18 +198,15 @@ class VoiceManager {
           break;
 
         case 'filterNode':
-          // Create filter
-          audioNode = new Tone.Filter(
-            nodeTemplate.data.frequency || 1000,
-            nodeTemplate.data.type || 'lowpass'
-          );
-          break;
-
         case 'mixerNode':
-          // Create channel (mixer)
-          audioNode = new Tone.Channel({
-            volume: nodeTemplate.data.volume || 0,
-          });
+          // FILTERS/MIXERS: Use canvas node (shared across all voices)
+          const canvasNodeId = nodeTemplate.canvasNodeId;
+          audioNode = audioGraph.getAudioNode(canvasNodeId);
+          isCanvasNode = true;
+
+          if (!audioNode) {
+            console.warn(`Canvas node not found: ${canvasNodeId}`);
+          }
           break;
 
         default:
@@ -201,6 +217,7 @@ class VoiceManager {
         type: nodeTemplate.type,
         audioNode,
         data: nodeTemplate.data,
+        isCanvasNode, // Track if this is a shared canvas node
       });
     });
 
@@ -258,6 +275,52 @@ class VoiceManager {
    */
   getActiveVoiceCount() {
     return this.activeVoices.size;
+  }
+
+  /**
+   * Update a parameter on all active voices using a specific template
+   * This enables live parameter control during playback
+   *
+   * @param {string} templateId - Template ID to target
+   * @param {string} nodeType - Type of node to update (e.g., 'filterNode')
+   * @param {string} paramName - Parameter name (e.g., 'frequency', 'type')
+   * @param {*} paramValue - New parameter value
+   */
+  updateActiveVoiceParameter(templateId, nodeType, paramName, paramValue) {
+    let updateCount = 0;
+
+    this.activeVoices.forEach((voice) => {
+      // Only update voices using this template
+      if (voice.templateId !== templateId) {
+        return;
+      }
+
+      // Find nodes of the matching type in this voice
+      voice.nodes.forEach((node) => {
+        if (node.type === nodeType && node.audioNode) {
+          // Update the parameter based on node type
+          if (nodeType === 'filterNode') {
+            if (paramName === 'frequency' && node.audioNode.frequency) {
+              node.audioNode.frequency.value = paramValue;
+              updateCount++;
+            } else if (paramName === 'type') {
+              node.audioNode.type = paramValue;
+              updateCount++;
+            }
+          } else if (nodeType === 'mixerNode') {
+            if (paramName === 'volume' && node.audioNode.volume) {
+              node.audioNode.volume.value = paramValue;
+              updateCount++;
+            }
+          }
+          // Add more node types as needed
+        }
+      });
+    });
+
+    if (updateCount > 0) {
+      console.log(`Updated ${paramName} to ${paramValue} on ${updateCount} active voice nodes`);
+    }
   }
 
   /**
