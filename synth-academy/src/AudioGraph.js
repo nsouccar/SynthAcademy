@@ -310,6 +310,12 @@ class AudioGraph {
 
       if (template && template.nodes.length > 0) {
         console.log(`Registering voice template for output ${outputNode.id}:`, template);
+        console.log('Template details:', {
+          nodeCount: template.nodes.length,
+          nodeTypes: template.nodes.map(n => n.type),
+          connectionCount: template.connections.length,
+          connections: template.connections
+        });
 
         // Stop any active voices using the old template before updating
         voiceManagerInstance.stopVoicesForTemplate(outputNode.id);
