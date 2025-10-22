@@ -310,6 +310,10 @@ class AudioGraph {
 
       if (template && template.nodes.length > 0) {
         console.log(`Registering voice template for output ${outputNode.id}:`, template);
+
+        // Stop any active voices using the old template before updating
+        voiceManagerInstance.stopVoicesForTemplate(outputNode.id);
+
         voiceManagerInstance.registerVoiceTemplate(outputNode.id, template);
       }
     });
@@ -333,6 +337,8 @@ class AudioGraph {
   buildVoiceTemplateFromOutput(outputNodeId, nodes, edges) {
     const chainNodeIds = [];
     const chainEdges = [];
+    const expandedNodes = []; // Track expanded group nodes
+    const groupIdToNodeIds = new Map(); // Map group ID to its internal node IDs
 
     // Trace backwards from output
     const visited = new Set();
@@ -346,7 +352,40 @@ class AudioGraph {
 
       // Don't include OutputNode itself in template (it's just a marker)
       const currentNode = nodes.find(n => n.id === currentNodeId);
-      if (currentNode && currentNode.type !== 'outputNode') {
+
+      // If this is a GroupNode, expand it
+      if (currentNode && currentNode.type === 'groupNode') {
+        const collapsedNodes = currentNode.data.collapsedNodes || [];
+        const collapsedEdges = currentNode.data.collapsedEdges || [];
+
+        // Add all collapsed nodes to the chain
+        collapsedNodes.forEach(node => {
+          chainNodeIds.push(node.id);
+          expandedNodes.push(node);
+          groupIdToNodeIds.set(currentNodeId, collapsedNodes.map(n => n.id));
+        });
+
+        // Add internal edges
+        chainEdges.push(...collapsedEdges);
+
+        // Find input nodes of the group and continue tracing from them
+        const inputNodeIds = currentNode.data.inputNodeIds || [];
+        inputNodeIds.forEach(inputId => {
+          // Find edges that connect TO this input node (from outside the group)
+          const incomingEdges = edges.filter(e => e.target === currentNodeId);
+          incomingEdges.forEach(edge => {
+            const sourceNode = nodes.find(n => n.id === edge.source);
+            if (sourceNode && sourceNode.type !== 'pianoNode') {
+              // Create virtual edge from external source to internal input node
+              chainEdges.push({
+                source: edge.source,
+                target: inputId
+              });
+              queue.push(edge.source);
+            }
+          });
+        });
+      } else if (currentNode && currentNode.type !== 'outputNode') {
         chainNodeIds.push(currentNodeId);
       }
 
@@ -371,11 +410,55 @@ class AudioGraph {
     // Convert to template format
     const template = {
       nodes: orderedNodes.map(nodeId => {
-        const node = nodes.find(n => n.id === nodeId);
+        // Check if this node came from an expanded group
+        const expandedNode = expandedNodes.find(n => n.id === nodeId);
+        const node = expandedNode || nodes.find(n => n.id === nodeId);
+
+        // For envelope nodes, detect what they're connected to
+        let modulationTarget = null;
+        if (node.type === 'envelopeNode') {
+          // First, check if audio is flowing INTO the envelope (incoming connection)
+          const incomingEdge = chainEdges.find(e => e.target === nodeId);
+          let hasIncomingAudio = false;
+
+          if (incomingEdge) {
+            const sourceNode = nodes.find(n => n.id === incomingEdge.source) ||
+                              expandedNodes.find(n => n.id === incomingEdge.source);
+            // Audio sources: oscillators, mixers, filters, or other envelopes (in audio path)
+            if (sourceNode && (
+              sourceNode.type === 'oscNode' ||
+              sourceNode.type === 'mixerNode' ||
+              sourceNode.type === 'filterNode' ||
+              sourceNode.type === 'envelopeNode'
+            )) {
+              hasIncomingAudio = true;
+            }
+          }
+
+          if (hasIncomingAudio) {
+            // Audio is flowing through this envelope = VOLUME envelope (in audio path)
+            modulationTarget = 'volume';
+            console.log(`Envelope ${nodeId}: VOLUME envelope (audio flowing through)`);
+          } else {
+            // No incoming audio, check what it connects TO
+            const outgoingEdge = chainEdges.find(e => e.source === nodeId);
+            if (outgoingEdge) {
+              const targetNode = nodes.find(n => n.id === outgoingEdge.target) ||
+                                expandedNodes.find(n => n.id === outgoingEdge.target);
+              if (targetNode && targetNode.type === 'filterNode') {
+                // Envelope with no audio input connecting to filter = FILTER modulation
+                modulationTarget = 'filter';
+                console.log(`Envelope ${nodeId}: FILTER modulation (no audio input)`);
+              }
+            }
+          }
+        }
+
         return {
           type: node.type,
           data: node.data || {},
-          canvasNodeId: nodeId  // Store the canvas node ID for voice routing
+          canvasNodeId: nodeId,  // Store the canvas node ID for voice routing
+          modulationTarget: modulationTarget  // For envelopes: what they modulate
         };
       }),
       connections: []

@@ -59,6 +59,23 @@ class VoiceManager {
   }
 
   /**
+   * Stop all active voices using a specific template
+   * This is called when the template changes (e.g., nodes added/removed)
+   * @param {string} templateId - Template ID
+   */
+  stopVoicesForTemplate(templateId) {
+    const voicesToStop = [];
+    this.activeVoices.forEach((voice, voiceId) => {
+      if (voice.templateId === templateId) {
+        voicesToStop.push(voiceId);
+      }
+    });
+
+    voicesToStop.forEach(voiceId => this.stopVoice(voiceId));
+    console.log(`Stopped ${voicesToStop.length} voices for template ${templateId}`);
+  }
+
+  /**
    * Start a new voice (triggered by piano key press)
    *
    * @param {string} templateId - Which template to use
@@ -114,38 +131,80 @@ class VoiceManager {
 
     console.log(`Stopping voice ${voiceId}`);
 
+    // Trigger release phase of envelopes BEFORE stopping
+    voice.nodes.forEach(node => {
+      if (node.type === 'envelopeNode' && node.audioNode.triggerRelease) {
+        node.audioNode.triggerRelease();
+      }
+    });
+
+    // Get the longest release time to know when to cleanup
+    let maxReleaseTime = 0;
+    voice.nodes.forEach(node => {
+      if (node.type === 'envelopeNode' && node.data.release) {
+        maxReleaseTime = Math.max(maxReleaseTime, node.data.release);
+      }
+    });
+
+    // If no envelope, cleanup immediately; otherwise wait for release to finish
+    // Add extra 100ms buffer to ensure envelope fully completes and reaches zero
+    const cleanupDelay = maxReleaseTime > 0 ? (maxReleaseTime * 1000) + 100 : 0;
+
     // Remove from active voices immediately (don't wait for cleanup)
     this.activeVoices.delete(voiceId);
 
-    // Cleanup all nodes in this voice (async to avoid blocking)
-    voice.nodes.forEach(node => {
-      if (node.audioNode && !node.isCanvasNode) {
-        // Only cleanup nodes that belong to this voice (not shared canvas nodes)
+    // Cleanup all nodes in this voice (after release completes)
+    setTimeout(() => {
+      voice.nodes.forEach(node => {
+        if (node.audioNode && !node.isCanvasNode) {
+          // Only cleanup nodes that belong to this voice (not shared canvas nodes)
 
-        // Stop the source first (immediate)
-        if (node.audioNode.stop) {
-          try {
-            node.audioNode.stop();
-          } catch (e) {
-            // Ignore if already stopped
-          }
-        }
-
-        // Disconnect and dispose asynchronously (non-blocking)
-        setTimeout(() => {
-          try {
-            node.audioNode.disconnect();
-            if (node.audioNode.dispose) {
-              node.audioNode.dispose();
+          // Stop oscillators (they need explicit stop call)
+          // Ramp volume to -Infinity before stopping to prevent clicks
+          if (node.type === 'oscNode' && node.audioNode.stop) {
+            try {
+              // Ramp oscillator volume to silent over 20ms
+              if (node.audioNode.volume) {
+                node.audioNode.volume.rampTo(-Infinity, 0.02);
+              }
+              // Schedule stop after ramp completes
+              setTimeout(() => {
+                try {
+                  node.audioNode.stop();
+                } catch (e) {
+                  // Ignore if already stopped
+                }
+              }, 25);
+            } catch (e) {
+              // Ignore if already stopped
             }
-          } catch (e) {
-            // Ignore cleanup errors
           }
-        }, 0);
-      }
-      // For canvas nodes (filters/mixers), do NOTHING
-      // They stay connected and are shared across all voices
-    });
+
+          // Disconnect and dispose everything after oscillators have stopped
+          // Wait 50ms to let oscillator volume ramp and stop complete
+          setTimeout(() => {
+            try {
+              // For filter envelopes, clean up the scaler too
+              if (node.type === 'envelopeNode' && node.audioNode._scaler) {
+                node.audioNode._scaler.disconnect();
+                if (node.audioNode._scaler.dispose) {
+                  node.audioNode._scaler.dispose();
+                }
+              }
+
+              node.audioNode.disconnect();
+              if (node.audioNode.dispose) {
+                node.audioNode.dispose();
+              }
+            } catch (e) {
+              // Ignore cleanup errors
+            }
+          }, 50);
+        }
+        // For canvas nodes (filters/mixers), do NOTHING
+        // They stay connected and are shared across all voices
+      });
+    }, cleanupDelay);
   }
 
   /**
@@ -168,7 +227,16 @@ class VoiceManager {
       switch (nodeTemplate.type) {
         case 'oscNode':
           // OSCILLATORS: Create new one for each voice (need different frequencies)
-          audioNode = new Tone.Oscillator(frequency, nodeTemplate.data.waveform || 'sine');
+
+          // Apply octave offset if specified (multiply frequency by 2^offset)
+          // octaveOffset = 1 means one octave up (2x frequency)
+          // octaveOffset = -1 means one octave down (0.5x frequency)
+          let adjustedFrequency = frequency;
+          if (nodeTemplate.data.octaveOffset) {
+            adjustedFrequency = frequency * Math.pow(2, nodeTemplate.data.octaveOffset);
+          }
+
+          audioNode = new Tone.Oscillator(adjustedFrequency, nodeTemplate.data.waveform || 'sine');
 
           // Apply detune if specified (in cents, e.g., +10 or -5)
           if (nodeTemplate.data.detune) {
@@ -202,10 +270,83 @@ class VoiceManager {
           // FILTERS/MIXERS: Use canvas node (shared across all voices)
           const canvasNodeId = nodeTemplate.canvasNodeId;
           audioNode = audioGraph.getAudioNode(canvasNodeId);
-          isCanvasNode = true;
 
+          // If canvas node not found, it might be from a collapsed group
+          // In that case, create a new node instance for this voice
           if (!audioNode) {
-            console.warn(`Canvas node not found: ${canvasNodeId}`);
+            console.log(`Canvas node not found: ${canvasNodeId}, creating new instance from template`);
+
+            if (nodeTemplate.type === 'filterNode') {
+              audioNode = new Tone.Filter(
+                nodeTemplate.data.frequency || 1000,
+                nodeTemplate.data.type || 'lowpass'
+              );
+            } else if (nodeTemplate.type === 'mixerNode') {
+              audioNode = new Tone.Volume(nodeTemplate.data.volume || 0);
+            }
+
+            // Don't mark as canvas node since we created it for this voice
+            isCanvasNode = false;
+          } else {
+            isCanvasNode = true;
+          }
+          break;
+
+        case 'envelopeNode':
+          // ENVELOPE: Create based on modulation target
+          const modulationTarget = nodeTemplate.modulationTarget;
+
+          // Convert curve values (-1 to 1) to Tone.js curve types
+          const getCurveType = (curveValue) => {
+            if (!curveValue || curveValue === 0) return 'linear';
+            if (curveValue > 0.5) return 'exponential';
+            if (curveValue > 0) return 'sine'; // Smooth exponential
+            if (curveValue < -0.5) return 'cosine'; // Sharp logarithmic
+            return 'linear'; // Close to 0
+          };
+
+          if (modulationTarget === 'volume') {
+            // Volume envelope - use AmplitudeEnvelope in signal chain
+            audioNode = new Tone.AmplitudeEnvelope({
+              attack: nodeTemplate.data.attack || 0.01,
+              attackCurve: getCurveType(nodeTemplate.data.attackCurve),
+              decay: nodeTemplate.data.decay || 0.1,
+              decayCurve: getCurveType(nodeTemplate.data.decayCurve),
+              sustain: nodeTemplate.data.sustain || 0.7,
+              release: nodeTemplate.data.release || 1.0,
+              releaseCurve: getCurveType(nodeTemplate.data.releaseCurve)
+            });
+
+            // Note: Tone.js doesn't support delay/hold in AmplitudeEnvelope
+            // We'll handle them manually if needed later
+
+          } else if (modulationTarget === 'filter') {
+            // Filter envelope - modulates filter cutoff frequency
+            // Use a Gain-like approach: create an Envelope that controls a multiplier
+            // The envelope output (0 to 1) will scale the filter's frequency parameter
+
+            audioNode = new Tone.Envelope({
+              attack: nodeTemplate.data.attack || 0.01,
+              attackCurve: getCurveType(nodeTemplate.data.attackCurve),
+              decay: nodeTemplate.data.decay || 0.1,
+              decayCurve: getCurveType(nodeTemplate.data.decayCurve),
+              sustain: nodeTemplate.data.sustain || 0.7,
+              release: nodeTemplate.data.release || 1.0,
+              releaseCurve: getCurveType(nodeTemplate.data.releaseCurve)
+            });
+
+            // Store a reference to indicate this is a filter envelope
+            audioNode._isFilterEnvelope = true;
+
+          } else {
+            console.warn(`Envelope with unknown modulation target: ${modulationTarget}`);
+            // Default to amplitude envelope
+            audioNode = new Tone.AmplitudeEnvelope({
+              attack: nodeTemplate.data.attack || 0.01,
+              decay: nodeTemplate.data.decay || 0.1,
+              sustain: nodeTemplate.data.sustain || 0.7,
+              release: nodeTemplate.data.release || 1.0
+            });
           }
           break;
 
@@ -218,6 +359,7 @@ class VoiceManager {
         audioNode,
         data: nodeTemplate.data,
         isCanvasNode, // Track if this is a shared canvas node
+        modulationTarget: nodeTemplate.modulationTarget // For envelopes
       });
     });
 
@@ -227,7 +369,33 @@ class VoiceManager {
       const targetNode = voiceNodes[conn.to];
 
       if (sourceNode?.audioNode && targetNode?.audioNode) {
-        sourceNode.audioNode.connect(targetNode.audioNode);
+        // Special case: Filter envelope modulation
+        if (sourceNode.type === 'envelopeNode' && sourceNode.modulationTarget === 'filter') {
+          // Connect envelope to filter's frequency parameter
+          // The envelope outputs 0-1, which will modulate the filter cutoff
+          if (targetNode.audioNode.frequency) {
+            // Create a Scale node to convert envelope (0-1) to frequency range (50 Hz to 10000 Hz)
+            const scaler = new Tone.Scale(50, 10000);
+            sourceNode.audioNode.connect(scaler);
+            scaler.connect(targetNode.audioNode.frequency);
+
+            // Store scaler for cleanup
+            sourceNode.audioNode._scaler = scaler;
+
+            console.log('✓ Connected filter envelope to filter frequency (50-10000 Hz)');
+          }
+        } else {
+          // Normal audio connection
+          sourceNode.audioNode.connect(targetNode.audioNode);
+          console.log(`✓ Connected ${sourceNode.type} → ${targetNode.type}${sourceNode.type === 'envelopeNode' ? ' (volume envelope in audio path)' : ''}`);
+        }
+      }
+    });
+
+    // Trigger all envelopes
+    voiceNodes.forEach(node => {
+      if (node.type === 'envelopeNode' && node.audioNode.triggerAttack) {
+        node.audioNode.triggerAttack();
       }
     });
 
@@ -235,7 +403,16 @@ class VoiceManager {
     if (voiceNodes.length > 0) {
       const lastNode = voiceNodes[voiceNodes.length - 1];
       if (lastNode?.audioNode) {
-        lastNode.audioNode.toDestination();
+        // Special case: Filter envelopes are modulators, don't connect to destination
+        // But volume envelopes ARE in the signal path, so they should connect
+        if (lastNode.type === 'envelopeNode' && lastNode.modulationTarget === 'filter') {
+          // Filter envelope is a modulator, don't connect to destination
+          console.log('Filter envelope is a modulator, not connecting to destination');
+        } else {
+          // All other nodes (including volume envelopes) connect to destination
+          lastNode.audioNode.toDestination();
+          console.log(`Connected final ${lastNode.type} to destination`);
+        }
       }
     }
 
