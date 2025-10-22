@@ -382,20 +382,23 @@ export function EnvelopeNode({ id, data }) {
 
         const handleGlobalMouseMove = (e) => {
             e.preventDefault();
+            e.stopPropagation();
             handleCanvasMouseMove(e);
         };
 
-        const handleGlobalMouseUp = () => {
+        const handleGlobalMouseUp = (e) => {
+            e.preventDefault();
+            e.stopPropagation();
             console.log('Stopped dragging');
             setIsDragging(null);
         };
 
-        document.addEventListener('mousemove', handleGlobalMouseMove);
-        document.addEventListener('mouseup', handleGlobalMouseUp);
+        document.addEventListener('mousemove', handleGlobalMouseMove, { capture: true });
+        document.addEventListener('mouseup', handleGlobalMouseUp, { capture: true });
 
         return () => {
-            document.removeEventListener('mousemove', handleGlobalMouseMove);
-            document.removeEventListener('mouseup', handleGlobalMouseUp);
+            document.removeEventListener('mousemove', handleGlobalMouseMove, { capture: true });
+            document.removeEventListener('mouseup', handleGlobalMouseUp, { capture: true });
         };
     }, [isDragging, handleCanvasMouseMove]);
 

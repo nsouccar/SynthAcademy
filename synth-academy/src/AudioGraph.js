@@ -396,9 +396,24 @@ class AudioGraph {
         const sourceNode = nodes.find(n => n.id === edge.source);
 
         // Skip piano nodes (they're controllers, not part of the voice)
+        // Skip modulation connections (they're not part of the main audio chain)
+        const isModulationConnection = edge.targetHandle === 'modulation-in';
+
         if (sourceNode && sourceNode.type !== 'pianoNode') {
+          // Add all edges (audio and modulation)
           chainEdges.push(edge);
-          queue.push(edge.source);
+
+          if (!isModulationConnection) {
+            // For audio connections, continue traversing backwards
+            queue.push(edge.source);
+          } else {
+            // For modulation connections, we still need to include the modulator node
+            // but we don't traverse further back from it (it's a leaf in the audio graph)
+            if (!visited.has(edge.source)) {
+              chainNodeIds.push(edge.source);
+              visited.add(edge.source);
+            }
+          }
         }
       });
     }
@@ -424,10 +439,9 @@ class AudioGraph {
           if (incomingEdge) {
             const sourceNode = nodes.find(n => n.id === incomingEdge.source) ||
                               expandedNodes.find(n => n.id === incomingEdge.source);
-            // Audio sources: oscillators, mixers, filters, or other envelopes (in audio path)
+            // Audio sources: oscillators, filters, or other envelopes (in audio path)
             if (sourceNode && (
               sourceNode.type === 'oscNode' ||
-              sourceNode.type === 'mixerNode' ||
               sourceNode.type === 'filterNode' ||
               sourceNode.type === 'envelopeNode'
             )) {
@@ -445,10 +459,28 @@ class AudioGraph {
             if (outgoingEdge) {
               const targetNode = nodes.find(n => n.id === outgoingEdge.target) ||
                                 expandedNodes.find(n => n.id === outgoingEdge.target);
-              if (targetNode && targetNode.type === 'filterNode') {
-                // Envelope with no audio input connecting to filter = FILTER modulation
-                modulationTarget = 'filter';
-                console.log(`Envelope ${nodeId}: FILTER modulation (no audio input)`);
+
+              // Check which handle the envelope is connected to
+              const targetHandle = outgoingEdge.targetHandle;
+
+              if (targetNode) {
+                if (targetNode.type === 'filterNode' && targetHandle === 'modulation-in') {
+                  // Envelope connected to filter's modulation input = FILTER modulation
+                  modulationTarget = 'filter';
+                  console.log(`Envelope ${nodeId}: FILTER modulation (connected to modulation input)`);
+                } else if (targetNode.type === 'oscNode' && targetHandle === 'modulation-in') {
+                  // Envelope connected to oscillator's modulation input = PITCH modulation
+                  modulationTarget = 'pitch';
+                  console.log(`Envelope ${nodeId}: PITCH modulation (connected to modulation input)`);
+                } else if (targetNode.type === 'filterNode') {
+                  // Envelope with no specific handle connecting to filter = assume FILTER modulation
+                  modulationTarget = 'filter';
+                  console.log(`Envelope ${nodeId}: FILTER modulation (no audio input)`);
+                } else if (targetNode.type === 'oscNode') {
+                  // Envelope with no specific handle connecting to oscillator = assume PITCH modulation
+                  modulationTarget = 'pitch';
+                  console.log(`Envelope ${nodeId}: PITCH modulation (no audio input)`);
+                }
               }
             }
           }

@@ -266,8 +266,7 @@ class VoiceManager {
           break;
 
         case 'filterNode':
-        case 'mixerNode':
-          // FILTERS/MIXERS: Use canvas node (shared across all voices)
+          // FILTERS: Use canvas node (shared across all voices)
           const canvasNodeId = nodeTemplate.canvasNodeId;
           audioNode = audioGraph.getAudioNode(canvasNodeId);
 
@@ -276,14 +275,10 @@ class VoiceManager {
           if (!audioNode) {
             console.log(`Canvas node not found: ${canvasNodeId}, creating new instance from template`);
 
-            if (nodeTemplate.type === 'filterNode') {
-              audioNode = new Tone.Filter(
-                nodeTemplate.data.frequency || 1000,
-                nodeTemplate.data.type || 'lowpass'
-              );
-            } else if (nodeTemplate.type === 'mixerNode') {
-              audioNode = new Tone.Volume(nodeTemplate.data.volume || 0);
-            }
+            audioNode = new Tone.Filter(
+              nodeTemplate.data.frequency || 1000,
+              nodeTemplate.data.type || 'lowpass'
+            );
 
             // Don't mark as canvas node since we created it for this voice
             isCanvasNode = false;
@@ -338,6 +333,24 @@ class VoiceManager {
             // Store a reference to indicate this is a filter envelope
             audioNode._isFilterEnvelope = true;
 
+          } else if (modulationTarget === 'pitch') {
+            // Pitch envelope - modulates oscillator frequency
+            // Use a regular Envelope that outputs 0-1, will be scaled later
+            console.log('Creating PITCH envelope with params:', nodeTemplate.data);
+            audioNode = new Tone.Envelope({
+              attack: nodeTemplate.data.attack || 0.01,
+              attackCurve: getCurveType(nodeTemplate.data.attackCurve),
+              decay: nodeTemplate.data.decay || 0.1,
+              decayCurve: getCurveType(nodeTemplate.data.decayCurve),
+              sustain: nodeTemplate.data.sustain || 0.7,
+              release: nodeTemplate.data.release || 1.0,
+              releaseCurve: getCurveType(nodeTemplate.data.releaseCurve)
+            });
+
+            // Store a reference to indicate this is a pitch envelope
+            audioNode._isPitchEnvelope = true;
+            console.log('Created pitch envelope:', audioNode);
+
           } else {
             console.warn(`Envelope with unknown modulation target: ${modulationTarget}`);
             // Default to amplitude envelope
@@ -383,6 +396,35 @@ class VoiceManager {
             sourceNode.audioNode._scaler = scaler;
 
             console.log('✓ Connected filter envelope to filter frequency (50-10000 Hz)');
+          }
+        } else if (sourceNode.type === 'envelopeNode' && sourceNode.modulationTarget === 'pitch') {
+          // Special case: Pitch envelope modulation
+          // Connect envelope to oscillator's frequency parameter
+          console.log('Attempting to connect pitch envelope to oscillator');
+          console.log('Source envelope:', sourceNode.audioNode);
+          console.log('Target oscillator:', targetNode.audioNode);
+
+          if (targetNode.audioNode.frequency) {
+            // Get the oscillator's base frequency
+            const baseFreq = targetNode.audioNode.frequency.value;
+            console.log('Base frequency:', baseFreq);
+
+            // Create a Scale node to convert envelope (0-1) to frequency multiplier
+            // 0 = base frequency, 0.5 = base frequency, 1 = 2 octaves up (4x frequency)
+            // This means the envelope sweeps from base freq to +2 octaves
+            const scaler = new Tone.Scale(baseFreq, baseFreq * 4);
+            console.log('Created scaler:', scaler, 'Range:', baseFreq, 'to', baseFreq * 4);
+
+            sourceNode.audioNode.connect(scaler);
+            scaler.connect(targetNode.audioNode.frequency);
+            console.log('Connected envelope → scaler → oscillator.frequency');
+
+            // Store scaler for cleanup
+            sourceNode.audioNode._scaler = scaler;
+
+            console.log(`✓ Connected pitch envelope to oscillator frequency (${baseFreq}Hz to ${baseFreq * 4}Hz)`);
+          } else {
+            console.warn('Target oscillator has no frequency parameter!');
           }
         } else {
           // Normal audio connection
@@ -482,11 +524,6 @@ class VoiceManager {
               updateCount++;
             } else if (paramName === 'type') {
               node.audioNode.type = paramValue;
-              updateCount++;
-            }
-          } else if (nodeType === 'mixerNode') {
-            if (paramName === 'volume' && node.audioNode.volume) {
-              node.audioNode.volume.value = paramValue;
               updateCount++;
             }
           }

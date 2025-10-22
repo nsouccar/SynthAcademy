@@ -70,14 +70,30 @@ export function FilterNode({ id, data }) {
                 textAlign: 'center',
             }}
         >
-            <Handle type="target" position={Position.Left} />
+            {/* Audio input on the left */}
+            <Handle
+                type="target"
+                position={Position.Left}
+                id="audio-in"
+                style={{ background: '#0f0', top: '50%' }}
+            />
+
+            {/* Modulation input on the top (for envelopes/LFOs) */}
+            <Handle
+                type="target"
+                position={Position.Top}
+                id="modulation-in"
+                style={{ background: '#f5576c', left: '50%' }}
+            />
 
             <strong style={{ color: '#f90' }}>FILTER</strong>
 
-            <div style={{ marginTop: 8, fontSize: '0.85em' }}>
+            <div className="nodrag nopan" style={{ marginTop: 8, fontSize: '0.85em' }}>
                 <select
                     value={filterType}
                     onChange={(e) => setFilterType(e.target.value)}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
                     style={{
                         width: '100%',
                         padding: 4,
@@ -86,6 +102,7 @@ export function FilterNode({ id, data }) {
                         color: 'white',
                         border: '1px solid #555',
                         borderRadius: 3,
+                        cursor: 'pointer',
                     }}
                 >
                     <option value="lowpass">Lowpass</option>
@@ -103,7 +120,9 @@ export function FilterNode({ id, data }) {
                     max="20000"
                     value={frequency}
                     onChange={(e) => setFrequency(Number(e.target.value))}
-                    style={{ width: '100%' }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    style={{ width: '100%', cursor: 'pointer' }}
                 />
             </div>
 
