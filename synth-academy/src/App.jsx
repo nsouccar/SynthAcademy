@@ -6,6 +6,8 @@ import { FilterNode } from './components/FilterNode';
 import { PianoNode } from './components/PianoNode';
 import { MixerNode } from './components/MixerNode';
 import { OutputNode } from './components/OutputNode';
+import { GroupNode } from './components/GroupNode';
+import { EnvelopeNode } from './components/EnvelopeNode';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 
@@ -20,7 +22,9 @@ const nodeTypes = {
   filterNode: FilterNode,
   pianoNode: PianoNode,
   mixerNode: MixerNode,
-  outputNode: OutputNode
+  outputNode: OutputNode,
+  groupNode: GroupNode,
+  envelopeNode: EnvelopeNode
 };
 
 export default function App() {
@@ -154,6 +158,118 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   }, []);
 
+  // Add an envelope node
+  const addEnvelopeNode = useCallback(() => {
+    const id = `envelope-${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'envelopeNode',
+      position: { x: 400, y: 150 },
+      data: {},
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }, []);
+
+  // Auto-collapse oscillators and mixers into "Color" group
+  const createColorGroup = useCallback(() => {
+    // Find all oscillator and mixer nodes
+    const colorNodes = nodes.filter(node =>
+      node.type === 'oscNode' || node.type === 'mixerNode'
+    );
+
+    if (colorNodes.length < 1) {
+      alert('No oscillators or mixers found to group');
+      return;
+    }
+
+    // Collapse logic
+    const selectedNodeIds = new Set(colorNodes.map(n => n.id));
+
+    // Find edges internal to the group
+    const internalEdges = edges.filter(edge =>
+      selectedNodeIds.has(edge.source) && selectedNodeIds.has(edge.target)
+    );
+
+    // Find input nodes (nodes receiving connections from outside)
+    const inputNodeIds = colorNodes
+      .filter(node =>
+        edges.some(edge => edge.target === node.id && !selectedNodeIds.has(edge.source))
+      )
+      .map(n => n.id);
+
+    // Find output nodes (nodes sending connections to outside)
+    const outputNodeIds = colorNodes
+      .filter(node =>
+        edges.some(edge => edge.source === node.id && !selectedNodeIds.has(edge.target))
+      )
+      .map(n => n.id);
+
+    // Calculate bounding box for collapsed nodes
+    const minX = Math.min(...colorNodes.map(n => n.position.x));
+    const minY = Math.min(...colorNodes.map(n => n.position.y));
+    const maxX = Math.max(...colorNodes.map(n => n.position.x + 150));
+    const maxY = Math.max(...colorNodes.map(n => n.position.y + 100));
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    // Store original positions relative to group center
+    const nodesWithRelativePos = colorNodes.map(node => ({
+      ...node,
+      position: {
+        x: node.position.x - centerX,
+        y: node.position.y - centerY
+      },
+      selected: false
+    }));
+
+    // Create group node
+    const groupId = `group-${Date.now()}`;
+    const groupNode = {
+      id: groupId,
+      type: 'groupNode',
+      position: { x: centerX - 80, y: centerY - 50 },
+      data: {
+        label: 'Color',
+        collapsedNodes: nodesWithRelativePos,
+        collapsedEdges: internalEdges,
+        inputNodeIds,
+        outputNodeIds
+      }
+    };
+
+    // Find external edges (connections to/from the group)
+    const externalEdges = edges.filter(edge => {
+      const sourceInGroup = selectedNodeIds.has(edge.source);
+      const targetInGroup = selectedNodeIds.has(edge.target);
+      return sourceInGroup !== targetInGroup; // XOR - one in, one out
+    });
+
+    // Reconnect external edges to the group node
+    const reconnectedEdges = externalEdges.map(edge => {
+      if (selectedNodeIds.has(edge.source)) {
+        // Edge FROM group
+        return { ...edge, source: groupId, sourceHandle: null };
+      } else {
+        // Edge TO group
+        return { ...edge, target: groupId, targetHandle: null };
+      }
+    });
+
+    // Update nodes and edges
+    setNodes((nds) => [
+      ...nds.filter(n => !selectedNodeIds.has(n.id)),
+      groupNode
+    ]);
+
+    setEdges((eds) => [
+      ...eds.filter(e =>
+        !selectedNodeIds.has(e.source) && !selectedNodeIds.has(e.target)
+      ),
+      ...reconnectedEdges
+    ]);
+  }, [nodes, edges]);
+
   return (
     <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
       {/* Sidebar with WaveformGraph2D */}
@@ -232,6 +348,39 @@ export default function App() {
             }}
           >
             + Add Output
+          </button>
+
+          <button
+            onClick={addEnvelopeNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Add Envelope
+          </button>
+
+          <button
+            onClick={createColorGroup}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: '#fff',
+              border: '2px solid #fff',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4
+            }}
+          >
+            Shape → Color
           </button>
         </div>
 

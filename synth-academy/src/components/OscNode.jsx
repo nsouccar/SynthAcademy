@@ -12,6 +12,9 @@ export function OscNode({ data, id }) {
     // Detune amount in cents (±50 cents range)
     const [detune, setDetune] = useState(data?.detune || 0);
 
+    // Octave offset (-2 to +2 octaves)
+    const [octaveOffset, setOctaveOffset] = useState(data?.octaveOffset || 0);
+
     // Draw waveform visualization
     useEffect(() => {
         if (!canvasRef.current || !data.waveformData) return;
@@ -128,6 +131,24 @@ export function OscNode({ data, id }) {
         );
     }, [detune, id, setNodes]);
 
+    // Update node data when octave offset changes
+    useEffect(() => {
+        setNodes((nodes) =>
+            nodes.map((node) => {
+                if (node.id === id) {
+                    return {
+                        ...node,
+                        data: {
+                            ...node.data,
+                            octaveOffset: octaveOffset,
+                        },
+                    };
+                }
+                return node;
+            })
+        );
+    }, [octaveOffset, id, setNodes]);
+
     // Determine label based on waveform type
     const getLabel = () => {
         if (data.waveform === 'custom') {
@@ -191,6 +212,22 @@ export function OscNode({ data, id }) {
                     max="50"
                     value={detune}
                     onChange={(e) => setDetune(Number(e.target.value))}
+                    style={{ width: '100%' }}
+                />
+            </div>
+
+            {/* Octave offset slider */}
+            <div style={{ marginTop: 8, fontSize: '0.75em' }}>
+                <label style={{ display: 'block', marginBottom: 4 }}>
+                    Octave: {octaveOffset > 0 ? '+' : ''}{octaveOffset}
+                </label>
+                <input
+                    type="range"
+                    min="-2"
+                    max="2"
+                    step="1"
+                    value={octaveOffset}
+                    onChange={(e) => setOctaveOffset(Number(e.target.value))}
                     style={{ width: '100%' }}
                 />
             </div>
