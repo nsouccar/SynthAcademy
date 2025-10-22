@@ -435,7 +435,7 @@ class AudioGraph {
         const expandedNode = expandedNodes.find(n => n.id === nodeId);
         const node = expandedNode || nodes.find(n => n.id === nodeId);
 
-        // For envelope nodes, detect what they're connected to
+        // For envelope and LFO nodes, detect what they're connected to
         let modulationTarget = null;
         if (node.type === 'envelopeNode') {
           // First, check if audio is flowing INTO the envelope (incoming connection)
@@ -490,13 +490,35 @@ class AudioGraph {
               }
             }
           }
+        } else if (node.type === 'lfoNode') {
+          // LFO nodes are always modulators - detect what they're connected to
+          const outgoingEdge = chainEdges.find(e => e.source === nodeId);
+          if (outgoingEdge) {
+            const targetNode = nodes.find(n => n.id === outgoingEdge.target) ||
+                              expandedNodes.find(n => n.id === outgoingEdge.target);
+            const targetHandle = outgoingEdge.targetHandle;
+
+            if (targetNode) {
+              if (targetNode.type === 'filterNode' && targetHandle === 'modulation-in') {
+                modulationTarget = 'filter';
+                console.log(`LFO ${nodeId}: FILTER modulation`);
+              } else if (targetNode.type === 'oscNode' && targetHandle === 'modulation-in') {
+                modulationTarget = 'pitch';
+                console.log(`LFO ${nodeId}: PITCH modulation`);
+              } else if (targetNode.type === 'filterNode') {
+                modulationTarget = 'filter';
+              } else if (targetNode.type === 'oscNode') {
+                modulationTarget = 'pitch';
+              }
+            }
+          }
         }
 
         return {
           type: node.type,
           data: node.data || {},
           canvasNodeId: nodeId,  // Store the canvas node ID for voice routing
-          modulationTarget: modulationTarget  // For envelopes: what they modulate
+          modulationTarget: modulationTarget  // For envelopes and LFOs: what they modulate
         };
       }),
       connections: []

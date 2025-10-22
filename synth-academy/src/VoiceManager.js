@@ -363,6 +363,54 @@ class VoiceManager {
           }
           break;
 
+        case 'lfoNode':
+          // LFO - Create based on modulation target
+          const lfoModTarget = nodeTemplate.modulationTarget;
+          const lfoWaveform = nodeTemplate.data.waveform || 'sine';
+          const lfoFrequency = nodeTemplate.data.frequency || 5;
+          const lfoDepth = nodeTemplate.data.depth || 0.5;
+          const lfoDelay = nodeTemplate.data.delay || 0;
+          const lfoSmoothness = nodeTemplate.data.smoothness || 0.5;
+
+          if (lfoModTarget === 'pitch' || lfoModTarget === 'filter') {
+            // Create an LFO for modulation
+            if (lfoWaveform === 'random') {
+              // Use Tone.Noise with low-pass filter for random LFO
+              audioNode = new Tone.Noise('pink');
+              audioNode._isLFO = true;
+              audioNode._lfoWaveform = lfoWaveform;
+              audioNode._lfoFrequency = lfoFrequency;
+              audioNode._lfoDepth = lfoDepth;
+              audioNode._lfoDelay = lfoDelay;
+              audioNode._lfoSmoothness = lfoSmoothness;
+              audioNode._lfoModTarget = lfoModTarget;
+            } else {
+              // Use Tone.LFO for standard waveforms
+              audioNode = new Tone.LFO({
+                frequency: lfoFrequency,
+                type: lfoWaveform,
+                min: 0,
+                max: 1,
+                phase: 0
+              });
+              audioNode._isLFO = true;
+              audioNode._lfoDepth = lfoDepth;
+              audioNode._lfoDelay = lfoDelay;
+              audioNode._lfoModTarget = lfoModTarget;
+
+              // Start the LFO after delay
+              if (lfoDelay > 0) {
+                audioNode.start(`+${lfoDelay}`);
+              } else {
+                audioNode.start();
+              }
+            }
+            console.log(`Created LFO for ${lfoModTarget} modulation:`, audioNode);
+          } else {
+            console.warn(`LFO with unknown modulation target: ${lfoModTarget}`);
+          }
+          break;
+
         default:
           console.warn(`Unknown node type in voice template: ${nodeTemplate.type}`);
       }
@@ -427,6 +475,43 @@ class VoiceManager {
           } else {
             console.warn('Target oscillator has no frequency parameter!');
           }
+        } else if (sourceNode.type === 'lfoNode' && sourceNode.modulationTarget === 'filter') {
+          // Special case: LFO modulating filter
+          if (targetNode.audioNode.frequency) {
+            // Create a Scale node to convert LFO (0-1) to frequency range
+            // Scale the range based on depth parameter
+            const depth = sourceNode.audioNode._lfoDepth || 0.5;
+            const minFreq = 50;
+            const maxFreq = 50 + (10000 - 50) * depth;
+
+            const scaler = new Tone.Scale(minFreq, maxFreq);
+            sourceNode.audioNode.connect(scaler);
+            scaler.connect(targetNode.audioNode.frequency);
+
+            // Store scaler for cleanup
+            sourceNode.audioNode._scaler = scaler;
+
+            console.log(`✓ Connected LFO to filter frequency (${minFreq}-${maxFreq} Hz, depth: ${depth})`);
+          }
+        } else if (sourceNode.type === 'lfoNode' && sourceNode.modulationTarget === 'pitch') {
+          // Special case: LFO modulating pitch
+          if (targetNode.audioNode.frequency) {
+            const baseFreq = targetNode.audioNode.frequency.value;
+            const depth = sourceNode.audioNode._lfoDepth || 0.5;
+
+            // Scale based on depth - 0 depth = no modulation, 1 depth = ±2 octaves
+            const minFreq = baseFreq / Math.pow(2, depth);
+            const maxFreq = baseFreq * Math.pow(2, depth);
+
+            const scaler = new Tone.Scale(minFreq, maxFreq);
+            sourceNode.audioNode.connect(scaler);
+            scaler.connect(targetNode.audioNode.frequency);
+
+            // Store scaler for cleanup
+            sourceNode.audioNode._scaler = scaler;
+
+            console.log(`✓ Connected LFO to oscillator pitch (${minFreq.toFixed(2)}-${maxFreq.toFixed(2)} Hz, depth: ${depth})`);
+          }
         } else {
           // Normal audio connection
           sourceNode.audioNode.connect(targetNode.audioNode);
@@ -458,8 +543,10 @@ class VoiceManager {
     let leafNodesConnected = 0;
     voiceNodes.forEach((node, index) => {
       const hasOutgoingConnection = nodeIndicesWithOutgoingConnections.has(index);
-      const isModulator = (node.type === 'envelopeNode' &&
-                          (node.modulationTarget === 'filter' || node.modulationTarget === 'pitch'));
+      const isModulator = (
+        (node.type === 'envelopeNode' && (node.modulationTarget === 'filter' || node.modulationTarget === 'pitch')) ||
+        (node.type === 'lfoNode' && (node.modulationTarget === 'filter' || node.modulationTarget === 'pitch'))
+      );
 
       console.log(`Node ${index} (${node.type}): hasOutgoing=${hasOutgoingConnection}, isModulator=${isModulator}`);
 

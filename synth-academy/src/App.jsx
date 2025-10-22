@@ -7,6 +7,7 @@ import { PianoNode } from './components/PianoNode';
 import { OutputNode } from './components/OutputNode';
 import { GroupNode } from './components/GroupNode';
 import { EnvelopeNode } from './components/EnvelopeNode';
+import { LFONode } from './components/LFONode';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 
@@ -22,7 +23,8 @@ const nodeTypes = {
   pianoNode: PianoNode,
   outputNode: OutputNode,
   groupNode: GroupNode,
-  envelopeNode: EnvelopeNode
+  envelopeNode: EnvelopeNode,
+  lfoNode: LFONode
 };
 
 export default function App() {
@@ -151,6 +153,18 @@ export default function App() {
       id,
       type: 'envelopeNode',
       position: { x: 400, y: 150 },
+      data: {},
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }, []);
+
+  // Add an LFO node
+  const addLFONode = useCallback(() => {
+    const id = `lfo-${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'lfoNode',
+      position: { x: 500, y: 150 },
       data: {},
     };
     setNodes((nds) => [...nds, newNode]);
@@ -334,6 +348,21 @@ export default function App() {
             }}
           >
             + Add Envelope
+          </button>
+
+          <button
+            onClick={addLFONode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Add LFO
           </button>
 
           <button
