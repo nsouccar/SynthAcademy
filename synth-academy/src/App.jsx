@@ -4,7 +4,6 @@ import { WaveformGraph2D } from './components/WaveformGraph2D';
 import { OscNode } from './components/OscNode';
 import { FilterNode } from './components/FilterNode';
 import { PianoNode } from './components/PianoNode';
-import { MixerNode } from './components/MixerNode';
 import { OutputNode } from './components/OutputNode';
 import { GroupNode } from './components/GroupNode';
 import { EnvelopeNode } from './components/EnvelopeNode';
@@ -21,7 +20,6 @@ const nodeTypes = {
   oscNode: OscNode,
   filterNode: FilterNode,
   pianoNode: PianoNode,
-  mixerNode: MixerNode,
   outputNode: OutputNode,
   groupNode: GroupNode,
   envelopeNode: EnvelopeNode
@@ -134,18 +132,6 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   }, []);
 
-  // Add a mixer node
-  const addMixerNode = useCallback(() => {
-    const id = `mixer-${Date.now()}`;
-    const newNode = {
-      id,
-      type: 'mixerNode',
-      position: { x: 250, y: 400 },
-      data: {},
-    };
-    setNodes((nds) => [...nds, newNode]);
-  }, []);
-
   // Add an output node
   const addOutputNode = useCallback(() => {
     const id = `output-${Date.now()}`;
@@ -170,15 +156,15 @@ export default function App() {
     setNodes((nds) => [...nds, newNode]);
   }, []);
 
-  // Auto-collapse oscillators and mixers into "Color" group
+  // Auto-collapse oscillators into "Color" group
   const createColorGroup = useCallback(() => {
-    // Find all oscillator and mixer nodes
+    // Find all oscillator nodes
     const colorNodes = nodes.filter(node =>
-      node.type === 'oscNode' || node.type === 'mixerNode'
+      node.type === 'oscNode'
     );
 
     if (colorNodes.length < 1) {
-      alert('No oscillators or mixers found to group');
+      alert('No oscillators found to group');
       return;
     }
 
@@ -321,21 +307,6 @@ export default function App() {
           </button>
 
           <button
-            onClick={addMixerNode}
-            style={{
-              padding: '8px 16px',
-              background: '#0f0',
-              color: '#000',
-              border: 'none',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
-            + Add Mixer
-          </button>
-
-          <button
             onClick={addOutputNode}
             style={{
               padding: '8px 16px',
@@ -392,6 +363,7 @@ export default function App() {
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           fitView
+          zoomOnPinch={true}
         >
           <Background />
           <Controls />

@@ -174,7 +174,20 @@ export function OscNode({ data, id }) {
             }}
         >
             {/* Input handle on the left for control signals (e.g., from piano) */}
-            <Handle type="target" position={Position.Left} style={{ background: '#0af' }} />
+            <Handle
+                type="target"
+                position={Position.Left}
+                id="control-in"
+                style={{ background: '#0af', top: '50%' }}
+            />
+
+            {/* Modulation input on the top (for pitch envelopes) */}
+            <Handle
+                type="target"
+                position={Position.Top}
+                id="modulation-in"
+                style={{ background: '#f5576c', left: '50%' }}
+            />
 
             {/* Output handle on the right for audio */}
             <Handle type="source" position={Position.Right} style={{ background: '#0f0' }} />
@@ -202,7 +215,7 @@ export function OscNode({ data, id }) {
             )}
 
             {/* Detune slider */}
-            <div style={{ marginTop: 8, fontSize: '0.75em' }}>
+            <div className="nodrag nopan" style={{ marginTop: 8, fontSize: '0.75em' }}>
                 <label style={{ display: 'block', marginBottom: 4 }}>
                     Detune: {detune > 0 ? '+' : ''}{detune}¢
                 </label>
@@ -212,12 +225,14 @@ export function OscNode({ data, id }) {
                     max="50"
                     value={detune}
                     onChange={(e) => setDetune(Number(e.target.value))}
-                    style={{ width: '100%' }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    style={{ width: '100%', cursor: 'pointer' }}
                 />
             </div>
 
             {/* Octave offset slider */}
-            <div style={{ marginTop: 8, fontSize: '0.75em' }}>
+            <div className="nodrag nopan" style={{ marginTop: 8, fontSize: '0.75em' }}>
                 <label style={{ display: 'block', marginBottom: 4 }}>
                     Octave: {octaveOffset > 0 ? '+' : ''}{octaveOffset}
                 </label>
@@ -228,7 +243,9 @@ export function OscNode({ data, id }) {
                     step="1"
                     value={octaveOffset}
                     onChange={(e) => setOctaveOffset(Number(e.target.value))}
-                    style={{ width: '100%' }}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    style={{ width: '100%', cursor: 'pointer' }}
                 />
             </div>
         </div>
