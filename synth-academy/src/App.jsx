@@ -8,6 +8,13 @@ import { OutputNode } from './components/OutputNode';
 import { GroupNode } from './components/GroupNode';
 import { EnvelopeNode } from './components/EnvelopeNode';
 import { LFONode } from './components/LFONode';
+import { ChorusNode } from './components/ChorusNode';
+import { ReverbNode } from './components/ReverbNode';
+import { DelayNode } from './components/DelayNode';
+import { DistortionNode } from './components/DistortionNode';
+import { PitchShifterNode } from './components/PitchShifterNode';
+import { PhaserNode } from './components/PhaserNode';
+import { VibratoNode } from './components/VibratoNode';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 
@@ -24,7 +31,14 @@ const nodeTypes = {
   outputNode: OutputNode,
   groupNode: GroupNode,
   envelopeNode: EnvelopeNode,
-  lfoNode: LFONode
+  lfoNode: LFONode,
+  chorusNode: ChorusNode,
+  reverbNode: ReverbNode,
+  delayNode: DelayNode,
+  distortionNode: DistortionNode,
+  pitchShifterNode: PitchShifterNode,
+  phaserNode: PhaserNode,
+  vibratoNode: VibratoNode
 };
 
 export default function App() {
@@ -168,6 +182,35 @@ export default function App() {
       data: {},
     };
     setNodes((nds) => [...nds, newNode]);
+  }, []);
+
+  // Add effect nodes
+  const addChorusNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `chorus-${Date.now()}`, type: 'chorusNode', position: { x: 600, y: 150 }, data: {} }]);
+  }, []);
+
+  const addReverbNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `reverb-${Date.now()}`, type: 'reverbNode', position: { x: 600, y: 250 }, data: {} }]);
+  }, []);
+
+  const addDelayNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `delay-${Date.now()}`, type: 'delayNode', position: { x: 600, y: 350 }, data: {} }]);
+  }, []);
+
+  const addDistortionNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `distortion-${Date.now()}`, type: 'distortionNode', position: { x: 600, y: 450 }, data: {} }]);
+  }, []);
+
+  const addPitchShifterNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `pitchshifter-${Date.now()}`, type: 'pitchShifterNode', position: { x: 700, y: 150 }, data: {} }]);
+  }, []);
+
+  const addPhaserNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `phaser-${Date.now()}`, type: 'phaserNode', position: { x: 700, y: 250 }, data: {} }]);
+  }, []);
+
+  const addVibratoNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `vibrato-${Date.now()}`, type: 'vibratoNode', position: { x: 700, y: 350 }, data: {} }]);
   }, []);
 
   // Auto-collapse oscillators into "Color" group
@@ -363,6 +406,111 @@ export default function App() {
             }}
           >
             + Add LFO
+          </button>
+
+          <button
+            onClick={addChorusNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Chorus
+          </button>
+
+          <button
+            onClick={addReverbNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+              color: '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Reverb
+          </button>
+
+          <button
+            onClick={addDelayNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+              color: '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Delay
+          </button>
+
+          <button
+            onClick={addDistortionNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #ff512f 0%, #dd2476 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Distortion
+          </button>
+
+          <button
+            onClick={addPitchShifterNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+              color: '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Pitch Shifter
+          </button>
+
+          <button
+            onClick={addPhaserNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Phaser
+          </button>
+
+          <button
+            onClick={addVibratoNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+              color: '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Vibrato
           </button>
 
           <button

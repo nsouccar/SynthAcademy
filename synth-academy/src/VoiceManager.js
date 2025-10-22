@@ -411,6 +411,89 @@ class VoiceManager {
           }
           break;
 
+        case 'chorusNode':
+        case 'reverbNode':
+        case 'delayNode':
+        case 'distortionNode':
+        case 'pitchShifterNode':
+        case 'phaserNode':
+        case 'vibratoNode':
+          // EFFECTS: Use canvas node (shared across all voices, like filters)
+          const effectCanvasNodeId = nodeTemplate.canvasNodeId;
+          audioNode = audioGraph.getAudioNode(effectCanvasNodeId);
+
+          // If canvas node not found, create it and register it
+          if (!audioNode) {
+            console.log(`Effect canvas node not found: ${effectCanvasNodeId}, creating new instance`);
+
+            switch (nodeTemplate.type) {
+              case 'chorusNode':
+                audioNode = new Tone.Chorus({
+                  frequency: nodeTemplate.data.frequency || 1.5,
+                  delayTime: nodeTemplate.data.delayTime || 3.5,
+                  depth: nodeTemplate.data.depth || 0.7,
+                  wet: nodeTemplate.data.wet || 0.5
+                }).start();
+                break;
+
+              case 'reverbNode':
+                audioNode = new Tone.Reverb({
+                  decay: nodeTemplate.data.decay || 1.5,
+                  preDelay: nodeTemplate.data.preDelay || 0.01,
+                  wet: nodeTemplate.data.wet || 0.3
+                });
+                break;
+
+              case 'delayNode':
+                audioNode = new Tone.FeedbackDelay({
+                  delayTime: nodeTemplate.data.delayTime || 0.25,
+                  feedback: nodeTemplate.data.feedback || 0.5,
+                  wet: nodeTemplate.data.wet || 0.5
+                });
+                break;
+
+              case 'distortionNode':
+                audioNode = new Tone.Distortion({
+                  distortion: nodeTemplate.data.distortion || 0.5,
+                  oversample: nodeTemplate.data.oversample || 'none',
+                  wet: nodeTemplate.data.wet || 1
+                });
+                break;
+
+              case 'pitchShifterNode':
+                audioNode = new Tone.PitchShift({
+                  pitch: nodeTemplate.data.pitch || 0,
+                  windowSize: nodeTemplate.data.windowSize || 0.1,
+                  wet: nodeTemplate.data.wet || 1
+                });
+                break;
+
+              case 'phaserNode':
+                audioNode = new Tone.Phaser({
+                  frequency: nodeTemplate.data.frequency || 0.5,
+                  octaves: nodeTemplate.data.octaves || 3,
+                  baseFrequency: nodeTemplate.data.baseFrequency || 350,
+                  wet: nodeTemplate.data.wet || 0.5
+                });
+                break;
+
+              case 'vibratoNode':
+                audioNode = new Tone.Vibrato({
+                  frequency: nodeTemplate.data.frequency || 5,
+                  depth: nodeTemplate.data.depth || 0.1,
+                  wet: nodeTemplate.data.wet || 1
+                });
+                break;
+            }
+
+            // Register the effect as a canvas node so all voices share it
+            audioGraph.registerNode(effectCanvasNodeId, audioNode);
+            isCanvasNode = true;
+          } else {
+            isCanvasNode = true;
+          }
+          break;
+
         default:
           console.warn(`Unknown node type in voice template: ${nodeTemplate.type}`);
       }
