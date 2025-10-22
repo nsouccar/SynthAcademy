@@ -363,6 +363,137 @@ class VoiceManager {
           }
           break;
 
+        case 'lfoNode':
+          // LFO - Create based on modulation target
+          const lfoModTarget = nodeTemplate.modulationTarget;
+          const lfoWaveform = nodeTemplate.data.waveform || 'sine';
+          const lfoFrequency = nodeTemplate.data.frequency || 5;
+          const lfoDepth = nodeTemplate.data.depth || 0.5;
+          const lfoDelay = nodeTemplate.data.delay || 0;
+          const lfoSmoothness = nodeTemplate.data.smoothness || 0.5;
+
+          if (lfoModTarget === 'pitch' || lfoModTarget === 'filter') {
+            // Create an LFO for modulation
+            if (lfoWaveform === 'random') {
+              // Use Tone.Noise with low-pass filter for random LFO
+              audioNode = new Tone.Noise('pink');
+              audioNode._isLFO = true;
+              audioNode._lfoWaveform = lfoWaveform;
+              audioNode._lfoFrequency = lfoFrequency;
+              audioNode._lfoDepth = lfoDepth;
+              audioNode._lfoDelay = lfoDelay;
+              audioNode._lfoSmoothness = lfoSmoothness;
+              audioNode._lfoModTarget = lfoModTarget;
+            } else {
+              // Use Tone.LFO for standard waveforms
+              audioNode = new Tone.LFO({
+                frequency: lfoFrequency,
+                type: lfoWaveform,
+                min: 0,
+                max: 1,
+                phase: 0
+              });
+              audioNode._isLFO = true;
+              audioNode._lfoDepth = lfoDepth;
+              audioNode._lfoDelay = lfoDelay;
+              audioNode._lfoModTarget = lfoModTarget;
+
+              // Start the LFO after delay
+              if (lfoDelay > 0) {
+                audioNode.start(`+${lfoDelay}`);
+              } else {
+                audioNode.start();
+              }
+            }
+            console.log(`Created LFO for ${lfoModTarget} modulation:`, audioNode);
+          } else {
+            console.warn(`LFO with unknown modulation target: ${lfoModTarget}`);
+          }
+          break;
+
+        case 'chorusNode':
+        case 'reverbNode':
+        case 'delayNode':
+        case 'distortionNode':
+        case 'pitchShifterNode':
+        case 'phaserNode':
+        case 'vibratoNode':
+          // EFFECTS: Use canvas node (shared across all voices, like filters)
+          const effectCanvasNodeId = nodeTemplate.canvasNodeId;
+          audioNode = audioGraph.getAudioNode(effectCanvasNodeId);
+
+          // If canvas node not found, create it and register it
+          if (!audioNode) {
+            console.log(`Effect canvas node not found: ${effectCanvasNodeId}, creating new instance`);
+
+            switch (nodeTemplate.type) {
+              case 'chorusNode':
+                audioNode = new Tone.Chorus({
+                  frequency: nodeTemplate.data.frequency || 1.5,
+                  delayTime: nodeTemplate.data.delayTime || 3.5,
+                  depth: nodeTemplate.data.depth || 0.7,
+                  wet: nodeTemplate.data.wet || 0.5
+                }).start();
+                break;
+
+              case 'reverbNode':
+                audioNode = new Tone.Reverb({
+                  decay: nodeTemplate.data.decay || 1.5,
+                  preDelay: nodeTemplate.data.preDelay || 0.01,
+                  wet: nodeTemplate.data.wet || 0.3
+                });
+                break;
+
+              case 'delayNode':
+                audioNode = new Tone.FeedbackDelay({
+                  delayTime: nodeTemplate.data.delayTime || 0.25,
+                  feedback: nodeTemplate.data.feedback || 0.5,
+                  wet: nodeTemplate.data.wet || 0.5
+                });
+                break;
+
+              case 'distortionNode':
+                audioNode = new Tone.Distortion({
+                  distortion: nodeTemplate.data.distortion || 0.5,
+                  oversample: nodeTemplate.data.oversample || 'none',
+                  wet: nodeTemplate.data.wet || 1
+                });
+                break;
+
+              case 'pitchShifterNode':
+                audioNode = new Tone.PitchShift({
+                  pitch: nodeTemplate.data.pitch || 0,
+                  windowSize: nodeTemplate.data.windowSize || 0.1,
+                  wet: nodeTemplate.data.wet || 1
+                });
+                break;
+
+              case 'phaserNode':
+                audioNode = new Tone.Phaser({
+                  frequency: nodeTemplate.data.frequency || 0.5,
+                  octaves: nodeTemplate.data.octaves || 3,
+                  baseFrequency: nodeTemplate.data.baseFrequency || 350,
+                  wet: nodeTemplate.data.wet || 0.5
+                });
+                break;
+
+              case 'vibratoNode':
+                audioNode = new Tone.Vibrato({
+                  frequency: nodeTemplate.data.frequency || 5,
+                  depth: nodeTemplate.data.depth || 0.1,
+                  wet: nodeTemplate.data.wet || 1
+                });
+                break;
+            }
+
+            // Register the effect as a canvas node so all voices share it
+            audioGraph.registerNode(effectCanvasNodeId, audioNode);
+            isCanvasNode = true;
+          } else {
+            isCanvasNode = true;
+          }
+          break;
+
         default:
           console.warn(`Unknown node type in voice template: ${nodeTemplate.type}`);
       }
@@ -372,7 +503,8 @@ class VoiceManager {
         audioNode,
         data: nodeTemplate.data,
         isCanvasNode, // Track if this is a shared canvas node
-        modulationTarget: nodeTemplate.modulationTarget // For envelopes
+        modulationTarget: nodeTemplate.modulationTarget, // For envelopes
+        nodeId: nodeTemplate.canvasNodeId // Store canvas node ID for debugging
       });
     });
 
@@ -426,6 +558,43 @@ class VoiceManager {
           } else {
             console.warn('Target oscillator has no frequency parameter!');
           }
+        } else if (sourceNode.type === 'lfoNode' && sourceNode.modulationTarget === 'filter') {
+          // Special case: LFO modulating filter
+          if (targetNode.audioNode.frequency) {
+            // Create a Scale node to convert LFO (0-1) to frequency range
+            // Scale the range based on depth parameter
+            const depth = sourceNode.audioNode._lfoDepth || 0.5;
+            const minFreq = 50;
+            const maxFreq = 50 + (10000 - 50) * depth;
+
+            const scaler = new Tone.Scale(minFreq, maxFreq);
+            sourceNode.audioNode.connect(scaler);
+            scaler.connect(targetNode.audioNode.frequency);
+
+            // Store scaler for cleanup
+            sourceNode.audioNode._scaler = scaler;
+
+            console.log(`✓ Connected LFO to filter frequency (${minFreq}-${maxFreq} Hz, depth: ${depth})`);
+          }
+        } else if (sourceNode.type === 'lfoNode' && sourceNode.modulationTarget === 'pitch') {
+          // Special case: LFO modulating pitch
+          if (targetNode.audioNode.frequency) {
+            const baseFreq = targetNode.audioNode.frequency.value;
+            const depth = sourceNode.audioNode._lfoDepth || 0.5;
+
+            // Scale based on depth - 0 depth = no modulation, 1 depth = ±2 octaves
+            const minFreq = baseFreq / Math.pow(2, depth);
+            const maxFreq = baseFreq * Math.pow(2, depth);
+
+            const scaler = new Tone.Scale(minFreq, maxFreq);
+            sourceNode.audioNode.connect(scaler);
+            scaler.connect(targetNode.audioNode.frequency);
+
+            // Store scaler for cleanup
+            sourceNode.audioNode._scaler = scaler;
+
+            console.log(`✓ Connected LFO to oscillator pitch (${minFreq.toFixed(2)}-${maxFreq.toFixed(2)} Hz, depth: ${depth})`);
+          }
         } else {
           // Normal audio connection
           sourceNode.audioNode.connect(targetNode.audioNode);
@@ -441,22 +610,38 @@ class VoiceManager {
       }
     });
 
-    // Connect last node to destination
-    if (voiceNodes.length > 0) {
-      const lastNode = voiceNodes[voiceNodes.length - 1];
-      if (lastNode?.audioNode) {
-        // Special case: Filter envelopes are modulators, don't connect to destination
-        // But volume envelopes ARE in the signal path, so they should connect
-        if (lastNode.type === 'envelopeNode' && lastNode.modulationTarget === 'filter') {
-          // Filter envelope is a modulator, don't connect to destination
-          console.log('Filter envelope is a modulator, not connecting to destination');
-        } else {
-          // All other nodes (including volume envelopes) connect to destination
-          lastNode.audioNode.toDestination();
-          console.log(`Connected final ${lastNode.type} to destination`);
-        }
+    // Connect all leaf nodes (nodes with no outgoing connections) to destination
+    // This handles parallel oscillators correctly
+    const nodeIndicesWithOutgoingConnections = new Set();
+
+    // Mark all node indices that have outgoing audio connections
+    template.connections.forEach(conn => {
+      nodeIndicesWithOutgoingConnections.add(conn.from);
+    });
+
+    console.log('Node indices with outgoing connections:', Array.from(nodeIndicesWithOutgoingConnections));
+    console.log('Total voiceNodes:', voiceNodes.length);
+
+    // Connect all leaf nodes to destination
+    let leafNodesConnected = 0;
+    voiceNodes.forEach((node, index) => {
+      const hasOutgoingConnection = nodeIndicesWithOutgoingConnections.has(index);
+      const isModulator = (
+        (node.type === 'envelopeNode' && (node.modulationTarget === 'filter' || node.modulationTarget === 'pitch')) ||
+        (node.type === 'lfoNode' && (node.modulationTarget === 'filter' || node.modulationTarget === 'pitch'))
+      );
+
+      console.log(`Node ${index} (${node.type}): hasOutgoing=${hasOutgoingConnection}, isModulator=${isModulator}`);
+
+      if (!hasOutgoingConnection && !isModulator && node.audioNode) {
+        // This is a leaf node that produces audio - connect it to destination
+        node.audioNode.toDestination();
+        console.log(`✓ Connected leaf node ${node.type} (index ${index}) to destination`);
+        leafNodesConnected++;
       }
-    }
+    });
+
+    console.log(`Total leaf nodes connected to destination: ${leafNodesConnected}`);
 
     return { nodes: voiceNodes };
   }
