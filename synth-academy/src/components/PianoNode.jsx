@@ -196,23 +196,23 @@ export function PianoNode({ id }) {
         };
     }, [playNote, stopNote, octave]);
 
-    // Render piano keys
+    // Render piano keys (two octaves)
     const renderKeys = () => {
         const whiteKeys = NOTE_NAMES.filter(n => !n.includes('#'));
         const blackKeys = NOTE_NAMES.filter(n => n.includes('#'));
 
         return (
             <div style={{ position: 'relative', display: 'flex', height: 100 }}>
-                {/* White keys */}
-                {whiteKeys.map((note) => {
+                {/* White keys - first octave */}
+                {whiteKeys.map((note, index) => {
                     const noteKey = `${note}-${octave}`;
                     return (
                         <div
-                            key={note}
-                            onMouseDown={() => playNote(note)}
-                            onMouseUp={() => stopNote(note)}
+                            key={`${note}-${octave}`}
+                            onMouseDown={() => playNote(note, octave)}
+                            onMouseUp={() => stopNote(note, octave)}
                             onMouseLeave={() => {
-                                if (activeNotes.has(noteKey)) stopNote(note);
+                                if (activeNotes.has(noteKey)) stopNote(note, octave);
                             }}
                             style={{
                                 width: 30,
@@ -241,7 +241,45 @@ export function PianoNode({ id }) {
                     );
                 })}
 
-                {/* Black keys */}
+                {/* White keys - second octave */}
+                {whiteKeys.map((note, index) => {
+                    const noteKey = `${note}-${octave + 1}`;
+                    return (
+                        <div
+                            key={`${note}-${octave + 1}`}
+                            onMouseDown={() => playNote(note, octave + 1)}
+                            onMouseUp={() => stopNote(note, octave + 1)}
+                            onMouseLeave={() => {
+                                if (activeNotes.has(noteKey)) stopNote(note, octave + 1);
+                            }}
+                            style={{
+                                width: 30,
+                                height: 100,
+                                background: activeNotes.has(noteKey) ? '#ccc' : 'white',
+                                border: '1px solid #000',
+                                borderRadius: '0 0 4px 4px',
+                                cursor: 'pointer',
+                                position: 'relative',
+                                transition: 'background 0.05s',
+                                userSelect: 'none',
+                            }}
+                        >
+                            <div style={{
+                                position: 'absolute',
+                                bottom: 5,
+                                left: '50%',
+                                transform: 'translateX(-50%)',
+                                fontSize: '0.7em',
+                                color: '#666',
+                                fontWeight: 'bold',
+                            }}>
+                                {note}
+                            </div>
+                        </div>
+                    );
+                })}
+
+                {/* Black keys - first octave */}
                 {blackKeys.map((note) => {
                     const noteKey = `${note}-${octave}`;
                     // Position black keys between white keys
@@ -251,11 +289,45 @@ export function PianoNode({ id }) {
 
                     return (
                         <div
-                            key={note}
-                            onMouseDown={() => playNote(note)}
-                            onMouseUp={() => stopNote(note)}
+                            key={`${note}-${octave}`}
+                            onMouseDown={() => playNote(note, octave)}
+                            onMouseUp={() => stopNote(note, octave)}
                             onMouseLeave={() => {
-                                if (activeNotes.has(noteKey)) stopNote(note);
+                                if (activeNotes.has(noteKey)) stopNote(note, octave);
+                            }}
+                            style={{
+                                position: 'absolute',
+                                left: leftOffset,
+                                top: 0,
+                                width: 20,
+                                height: 60,
+                                background: activeNotes.has(noteKey) ? '#555' : '#000',
+                                border: '1px solid #000',
+                                borderRadius: '0 0 3px 3px',
+                                cursor: 'pointer',
+                                zIndex: 10,
+                                transition: 'background 0.05s',
+                                userSelect: 'none',
+                            }}
+                        />
+                    );
+                })}
+
+                {/* Black keys - second octave */}
+                {blackKeys.map((note) => {
+                    const noteKey = `${note}-${octave + 1}`;
+                    // Position black keys between white keys
+                    const baseNote = note.replace('#', '');
+                    const whiteKeyIndex = whiteKeys.indexOf(baseNote);
+                    const leftOffset = (whiteKeyIndex + 0.7 + whiteKeys.length) * 30;
+
+                    return (
+                        <div
+                            key={`${note}-${octave + 1}`}
+                            onMouseDown={() => playNote(note, octave + 1)}
+                            onMouseUp={() => stopNote(note, octave + 1)}
+                            onMouseLeave={() => {
+                                if (activeNotes.has(noteKey)) stopNote(note, octave + 1);
                             }}
                             style={{
                                 position: 'absolute',
@@ -286,7 +358,7 @@ export function PianoNode({ id }) {
                 color: 'white',
                 borderRadius: 6,
                 border: '1px solid #0af',
-                minWidth: 280,
+                minWidth: 450,
                 textAlign: 'center',
             }}
         >

@@ -2,6 +2,12 @@ import React, { useState, useCallback, useEffect } from 'react';
 import ReactFlow, { addEdge, Background, Controls, applyNodeChanges, applyEdgeChanges } from 'reactflow';
 import { WaveformGraph2D } from './components/WaveformGraph2D';
 import { OscNode } from './components/OscNode';
+import { PulseOscNode } from './components/PulseOscNode';
+import { SineOscNode } from './components/SineOscNode';
+import { SquareOscNode } from './components/SquareOscNode';
+import { SawtoothOscNode } from './components/SawtoothOscNode';
+import { TriangleOscNode } from './components/TriangleOscNode';
+import { NoiseOscNode } from './components/NoiseOscNode';
 import { FilterNode } from './components/FilterNode';
 import { PianoNode } from './components/PianoNode';
 import { OutputNode } from './components/OutputNode';
@@ -15,6 +21,7 @@ import { DistortionNode } from './components/DistortionNode';
 import { PitchShifterNode } from './components/PitchShifterNode';
 import { PhaserNode } from './components/PhaserNode';
 import { VibratoNode } from './components/VibratoNode';
+import { GuidedTutorial } from './components/GuidedTutorial';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 
@@ -26,6 +33,12 @@ setVoiceManager(voiceManager);
 // Register node types outside component to avoid warning
 const nodeTypes = {
   oscNode: OscNode,
+  pulseOscNode: PulseOscNode,
+  sineOscNode: SineOscNode,
+  squareOscNode: SquareOscNode,
+  sawtoothOscNode: SawtoothOscNode,
+  triangleOscNode: TriangleOscNode,
+  noiseOscNode: NoiseOscNode,
   filterNode: FilterNode,
   pianoNode: PianoNode,
   outputNode: OutputNode,
@@ -44,6 +57,7 @@ const nodeTypes = {
 export default function App() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Handle waveform drop
   const onDrop = useCallback((event) => {
@@ -122,6 +136,31 @@ export default function App() {
     return () => {
       audioGraph.cleanup();
     };
+  }, []);
+
+  // Add oscillator nodes
+  const addSineOscNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `sine-${Date.now()}`, type: 'sineOscNode', position: { x: 100, y: 100 }, data: {} }]);
+  }, []);
+
+  const addSquareOscNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `square-${Date.now()}`, type: 'squareOscNode', position: { x: 100, y: 100 }, data: {} }]);
+  }, []);
+
+  const addSawtoothOscNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `sawtooth-${Date.now()}`, type: 'sawtoothOscNode', position: { x: 100, y: 100 }, data: {} }]);
+  }, []);
+
+  const addTriangleOscNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `triangle-${Date.now()}`, type: 'triangleOscNode', position: { x: 100, y: 100 }, data: {} }]);
+  }, []);
+
+  const addPulseOscNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `pulse-${Date.now()}`, type: 'pulseOscNode', position: { x: 100, y: 100 }, data: { pulseWidth: 0.5 } }]);
+  }, []);
+
+  const addNoiseOscNode = useCallback(() => {
+    setNodes((nds) => [...nds, { id: `noise-${Date.now()}`, type: 'noiseOscNode', position: { x: 100, y: 100 }, data: {} }]);
   }, []);
 
   // Add a filter node at the center of the viewport
@@ -332,7 +371,29 @@ export default function App() {
           zIndex: 10,
           display: 'flex',
           gap: 8,
+          flexWrap: 'wrap',
+          maxWidth: 'calc(100vw - 300px)'
         }}>
+          {/* Oscillators */}
+          <button onClick={addSineOscNode} style={{ padding: '8px 16px', background: '#4a9eff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+            Sine
+          </button>
+          <button onClick={addSquareOscNode} style={{ padding: '8px 16px', background: '#ff4a4a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+            Square
+          </button>
+          <button onClick={addSawtoothOscNode} style={{ padding: '8px 16px', background: '#4aff4a', color: '#000', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+            Sawtooth
+          </button>
+          <button onClick={addTriangleOscNode} style={{ padding: '8px 16px', background: '#ffff4a', color: '#000', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+            Triangle
+          </button>
+          <button onClick={addPulseOscNode} style={{ padding: '8px 16px', background: '#ff9d4a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+            Pulse
+          </button>
+          <button onClick={addNoiseOscNode} style={{ padding: '8px 16px', background: '#ff4aff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+            Noise
+          </button>
+
           <button
             onClick={addFilterNode}
             style={{
@@ -530,6 +591,22 @@ export default function App() {
           >
             Shape → Color
           </button>
+
+          {/* Tutorial Button */}
+          <button
+            onClick={() => setShowTutorial(true)}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+              color: '#fff',
+              border: '2px solid #fff',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            🎓 Start Tutorial
+          </button>
         </div>
 
         <ReactFlow
@@ -545,6 +622,15 @@ export default function App() {
           <Background />
           <Controls />
         </ReactFlow>
+
+        {/* Guided Tutorial Overlay */}
+        {showTutorial && (
+          <GuidedTutorial
+            nodes={nodes}
+            edges={edges}
+            onClose={() => setShowTutorial(false)}
+          />
+        )}
       </div>
     </div>
   );

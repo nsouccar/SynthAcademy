@@ -180,6 +180,50 @@ class VoiceManager {
             }
           }
 
+          // Stop dedicated oscillator types (including unison)
+          if ((node.type === 'pulseOscNode' || node.type === 'sineOscNode' ||
+               node.type === 'squareOscNode' || node.type === 'sawtoothOscNode' ||
+               node.type === 'triangleOscNode' || node.type === 'noiseOscNode')) {
+
+            // Check if this is a unison node (has multiple oscillators)
+            if (node.audioNode._unisonOscillators) {
+              node.audioNode._unisonOscillators.forEach(({ osc }) => {
+                try {
+                  if (osc.volume) {
+                    osc.volume.rampTo(-Infinity, 0.02);
+                  }
+                  setTimeout(() => {
+                    try {
+                      osc.stop();
+                      osc.disconnect();
+                      if (osc.dispose) osc.dispose();
+                    } catch (e) {
+                      // Ignore cleanup errors
+                    }
+                  }, 25);
+                } catch (e) {
+                  // Ignore if already stopped
+                }
+              });
+            } else if (node.audioNode.stop) {
+              // Single oscillator
+              try {
+                if (node.audioNode.volume) {
+                  node.audioNode.volume.rampTo(-Infinity, 0.02);
+                }
+                setTimeout(() => {
+                  try {
+                    node.audioNode.stop();
+                  } catch (e) {
+                    // Ignore if already stopped
+                  }
+                }, 25);
+              } catch (e) {
+                // Ignore if already stopped
+              }
+            }
+          }
+
           // Disconnect and dispose everything after oscillators have stopped
           // Wait 50ms to let oscillator volume ramp and stop complete
           setTimeout(() => {
@@ -262,6 +306,110 @@ class VoiceManager {
           // Start oscillator with velocity-based volume
           const volume = -20 + (velocity * 10); // -20dB to -10dB based on velocity
           audioNode.volume.value = volume;
+          audioNode.start();
+          break;
+
+        case 'pulseOscNode':
+        case 'sineOscNode':
+        case 'squareOscNode':
+        case 'sawtoothOscNode':
+        case 'triangleOscNode':
+          // DEDICATED OSCILLATOR TYPES: Create new one for each voice
+
+          // Determine waveform from node type
+          let dedicatedWaveform = 'sine';
+          if (nodeTemplate.type === 'squareOscNode') dedicatedWaveform = 'square';
+          else if (nodeTemplate.type === 'sawtoothOscNode') dedicatedWaveform = 'sawtooth';
+          else if (nodeTemplate.type === 'triangleOscNode') dedicatedWaveform = 'triangle';
+          else if (nodeTemplate.type === 'sineOscNode') dedicatedWaveform = 'sine';
+
+          // Apply octave offset if specified
+          let dedicatedAdjustedFrequency = frequency;
+          if (nodeTemplate.data.octaveOffset) {
+            dedicatedAdjustedFrequency = frequency * Math.pow(2, nodeTemplate.data.octaveOffset);
+          }
+
+          // Check if this is a sawtooth with unison enabled
+          const unisonVoices = nodeTemplate.type === 'sawtoothOscNode' && nodeTemplate.data.unisonVoices > 1
+            ? nodeTemplate.data.unisonVoices
+            : 1;
+          const unisonSpread = nodeTemplate.data.unisonSpread || 50; // Cents
+
+          if (unisonVoices > 1) {
+            // Create multiple oscillators for unison
+            const merger = new Tone.Gain(); // Mix all voices together in mono
+            const oscillators = [];
+
+            for (let i = 0; i < unisonVoices; i++) {
+              let osc;
+              if (nodeTemplate.type === 'pulseOscNode') {
+                osc = new Tone.PulseOscillator(
+                  dedicatedAdjustedFrequency,
+                  nodeTemplate.data.pulseWidth || 0.5
+                );
+              } else {
+                osc = new Tone.Oscillator(dedicatedAdjustedFrequency, dedicatedWaveform);
+              }
+
+              // Apply base detune (shifts ALL voices together)
+              if (nodeTemplate.data.detune) {
+                osc.detune.value = nodeTemplate.data.detune;
+              }
+
+              // Apply spread detune (spreads voices around center pitch)
+              // Each voice gets detuned by a different amount from center
+              if (unisonVoices > 1) {
+                const spreadOffset = ((i / (unisonVoices - 1)) - 0.5) * 2 * unisonSpread;
+                osc.detune.value += spreadOffset;
+              }
+
+              // Calculate volume compensation (more voices = lower volume per voice)
+              const volumeCompensation = -3 * Math.log2(unisonVoices);
+              const dedicatedVolume = -20 + (velocity * 10) + volumeCompensation;
+              osc.volume.value = dedicatedVolume;
+
+              // Connect: oscillator -> merger (all in mono/center)
+              osc.connect(merger);
+
+              osc.start();
+              oscillators.push({ osc });
+            }
+
+            // The merger becomes the audio node that connects to the next stage
+            audioNode = merger;
+            // Store oscillators for cleanup
+            audioNode._unisonOscillators = oscillators;
+
+          } else {
+            // Single oscillator (no unison)
+            if (nodeTemplate.type === 'pulseOscNode') {
+              audioNode = new Tone.PulseOscillator(
+                dedicatedAdjustedFrequency,
+                nodeTemplate.data.pulseWidth || 0.5
+              );
+            } else {
+              audioNode = new Tone.Oscillator(dedicatedAdjustedFrequency, dedicatedWaveform);
+            }
+
+            // Apply detune if specified
+            if (nodeTemplate.data.detune) {
+              audioNode.detune.value = nodeTemplate.data.detune;
+            }
+
+            // Start oscillator with velocity-based volume
+            const dedicatedVolume = -20 + (velocity * 10);
+            audioNode.volume.value = dedicatedVolume;
+            audioNode.start();
+          }
+          break;
+
+        case 'noiseOscNode':
+          // NOISE OSCILLATOR: Create new one for each voice
+          audioNode = new Tone.Noise('white');
+
+          // Start noise with velocity-based volume
+          const noiseVolume = -20 + (velocity * 10);
+          audioNode.volume.value = noiseVolume;
           audioNode.start();
           break;
 
@@ -488,6 +636,10 @@ class VoiceManager {
 
             // Register the effect as a canvas node so all voices share it
             audioGraph.registerNode(effectCanvasNodeId, audioNode);
+
+            // Connect effect to destination if it's a leaf node (will be determined later)
+            // Effects need to be connected to destination when they're the final node in the chain
+
             isCanvasNode = true;
           } else {
             isCanvasNode = true;
@@ -624,6 +776,8 @@ class VoiceManager {
 
     // Connect all leaf nodes to destination
     let leafNodesConnected = 0;
+    const connectedCanvasNodes = new Set(); // Track which canvas nodes we've already connected
+
     voiceNodes.forEach((node, index) => {
       const hasOutgoingConnection = nodeIndicesWithOutgoingConnections.has(index);
       const isModulator = (
@@ -631,13 +785,25 @@ class VoiceManager {
         (node.type === 'lfoNode' && (node.modulationTarget === 'filter' || node.modulationTarget === 'pitch'))
       );
 
-      console.log(`Node ${index} (${node.type}): hasOutgoing=${hasOutgoingConnection}, isModulator=${isModulator}`);
+      console.log(`Node ${index} (${node.type}): hasOutgoing=${hasOutgoingConnection}, isModulator=${isModulator}, isCanvasNode=${node.isCanvasNode}`);
 
       if (!hasOutgoingConnection && !isModulator && node.audioNode) {
         // This is a leaf node that produces audio - connect it to destination
-        node.audioNode.toDestination();
-        console.log(`✓ Connected leaf node ${node.type} (index ${index}) to destination`);
-        leafNodesConnected++;
+
+        // For canvas nodes (shared effects/filters), only connect once
+        if (node.isCanvasNode) {
+          if (!connectedCanvasNodes.has(node.nodeId)) {
+            node.audioNode.toDestination();
+            connectedCanvasNodes.add(node.nodeId);
+            console.log(`✓ Connected canvas leaf node ${node.type} (${node.nodeId}) to destination`);
+            leafNodesConnected++;
+          }
+        } else {
+          // For voice-specific nodes (oscillators, envelopes), connect each instance
+          node.audioNode.toDestination();
+          console.log(`✓ Connected voice leaf node ${node.type} (index ${index}) to destination`);
+          leafNodesConnected++;
+        }
       }
     });
 
