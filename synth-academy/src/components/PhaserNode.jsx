@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, useReactFlow } from 'reactflow';
+import * as Tone from 'tone';
+import { audioGraph } from '../AudioGraph';
 
 /**
  * PhaserNode - Phaser effect
@@ -7,11 +9,69 @@ import { Handle, Position, useReactFlow } from 'reactflow';
  */
 export function PhaserNode({ id, data }) {
   const { setNodes } = useReactFlow();
+  const effectRef = useRef(null);
 
   const [frequency, setFrequency] = useState(data?.frequency || 0.5);
   const [octaves, setOctaves] = useState(data?.octaves || 3);
   const [baseFrequency, setBaseFrequency] = useState(data?.baseFrequency || 350);
   const [wet, setWet] = useState(data?.wet || 0.5);
+
+  // Create the Tone.js effect on mount
+  useEffect(() => {
+    try {
+      const effect = new Tone.Phaser({
+        frequency: frequency,
+        octaves: octaves,
+        baseFrequency: baseFrequency,
+        wet: wet
+      });
+      effectRef.current = effect;
+      audioGraph.registerNode(id, effect);
+
+      return () => {
+        if (effectRef.current) {
+          audioGraph.unregisterNode(id);
+          try {
+            effectRef.current.dispose();
+          } catch (e) {
+            console.error('Error disposing phaser:', e);
+          }
+          effectRef.current = null;
+        }
+      };
+    } catch (e) {
+      console.error('Error creating phaser effect:', e);
+      return () => {}; // Return empty cleanup if creation failed
+    }
+  }, [id]);
+
+  // Update frequency
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.frequency.value = frequency;
+    }
+  }, [frequency]);
+
+  // Update octaves
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.octaves = octaves;
+    }
+  }, [octaves]);
+
+  // Update base frequency
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.baseFrequency = baseFrequency;
+    }
+  }, [baseFrequency]);
+
+  // Update wet/dry mix
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.wet.value = wet;
+    }
+  }, [wet]);
 
   useEffect(() => {
     setNodes((nodes) =>

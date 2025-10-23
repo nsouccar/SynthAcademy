@@ -8,12 +8,29 @@ export function FilterNode({ id, data }) {
     const { setNodes } = useReactFlow();
 
     // Initialize state from node data if available, otherwise use defaults
-    const [frequency, setFrequency] = useState(data?.frequency || 1000);
+    const [cutoff, setCutoff] = useState(data?.cutoff !== undefined ? data.cutoff : 50); // 0-100%
+    const [resonance, setResonance] = useState(data?.resonance !== undefined ? data.resonance : 0); // 0-100%
     const [filterType, setFilterType] = useState(data?.type || 'lowpass');
+
+    // Convert cutoff percentage to frequency (logarithmic scale 20Hz - 20kHz)
+    const percentToFrequency = (percent) => {
+        const minFreq = Math.log(20);
+        const maxFreq = Math.log(20000);
+        return Math.exp(minFreq + (percent / 100) * (maxFreq - minFreq));
+    };
+
+    // Convert resonance percentage to Q value (0.1 - 30)
+    const percentToQ = (percent) => {
+        return 0.1 + (percent / 100) * 29.9;
+    };
+
+    const frequency = percentToFrequency(cutoff);
+    const qValue = percentToQ(resonance);
 
     useEffect(() => {
         // Create a filter node
         const filter = new Tone.Filter(frequency, filterType);
+        filter.Q.value = qValue;
         filterRef.current = filter;
 
         // Connect to destination by default
@@ -27,12 +44,13 @@ export function FilterNode({ id, data }) {
             audioGraph.unregisterNode(id);
             filterRef.current = null;
         };
-    }, [id]);
+    }, [id, frequency, filterType, qValue]);
 
     // Update filter parameters when they change
     useEffect(() => {
         if (filterRef.current) {
             filterRef.current.frequency.value = frequency;
+            filterRef.current.Q.value = qValue;
             filterRef.current.type = filterType;
         }
 
@@ -44,6 +62,8 @@ export function FilterNode({ id, data }) {
                         ...node,
                         data: {
                             ...node.data,
+                            cutoff: cutoff,
+                            resonance: resonance,
                             frequency: frequency,
                             type: filterType,
                         },
@@ -56,7 +76,7 @@ export function FilterNode({ id, data }) {
         // Notify AudioGraph so it can update active voices
         audioGraph.notifyParameterChange(id, 'filterNode', 'frequency', frequency);
         audioGraph.notifyParameterChange(id, 'filterNode', 'type', filterType);
-    }, [frequency, filterType, id, setNodes]);
+    }, [cutoff, resonance, frequency, qValue, filterType, id, setNodes]);
 
     return (
         <div
@@ -112,14 +132,30 @@ export function FilterNode({ id, data }) {
                 </select>
 
                 <label style={{ display: 'block', marginBottom: 4 }}>
-                    Freq: {frequency}Hz
+                    Cutoff: {cutoff}%
                 </label>
                 <input
                     type="range"
-                    min="20"
-                    max="20000"
-                    value={frequency}
-                    onChange={(e) => setFrequency(Number(e.target.value))}
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={cutoff}
+                    onChange={(e) => setCutoff(Number(e.target.value))}
+                    onMouseDown={(e) => e.stopPropagation()}
+                    onMouseUp={(e) => e.stopPropagation()}
+                    style={{ width: '100%', cursor: 'pointer' }}
+                />
+
+                <label style={{ display: 'block', marginTop: 8, marginBottom: 4 }}>
+                    Resonance: {resonance}%
+                </label>
+                <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    value={resonance}
+                    onChange={(e) => setResonance(Number(e.target.value))}
                     onMouseDown={(e) => e.stopPropagation()}
                     onMouseUp={(e) => e.stopPropagation()}
                     style={{ width: '100%', cursor: 'pointer' }}

@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, useReactFlow } from 'reactflow';
+import * as Tone from 'tone';
+import { audioGraph } from '../AudioGraph';
 
 /**
  * PitchShifterNode - Pitch shifter effect
@@ -7,10 +9,60 @@ import { Handle, Position, useReactFlow } from 'reactflow';
  */
 export function PitchShifterNode({ id, data }) {
   const { setNodes } = useReactFlow();
+  const effectRef = useRef(null);
 
   const [pitch, setPitch] = useState(data?.pitch || 0);
   const [windowSize, setWindowSize] = useState(data?.windowSize || 0.1);
   const [wet, setWet] = useState(data?.wet || 1);
+
+  // Create the Tone.js effect on mount
+  useEffect(() => {
+    try {
+      const effect = new Tone.PitchShift({
+        pitch: pitch,
+        windowSize: windowSize,
+        wet: wet
+      });
+      effectRef.current = effect;
+      audioGraph.registerNode(id, effect);
+
+      return () => {
+        if (effectRef.current) {
+          audioGraph.unregisterNode(id);
+          try {
+            effectRef.current.dispose();
+          } catch (e) {
+            console.error('Error disposing pitch shifter:', e);
+          }
+          effectRef.current = null;
+        }
+      };
+    } catch (e) {
+      console.error('Error creating pitch shifter effect:', e);
+      return () => {}; // Return empty cleanup if creation failed
+    }
+  }, [id]);
+
+  // Update pitch
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.pitch = pitch;
+    }
+  }, [pitch]);
+
+  // Update window size
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.windowSize = windowSize;
+    }
+  }, [windowSize]);
+
+  // Update wet/dry mix
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.wet.value = wet;
+    }
+  }, [wet]);
 
   useEffect(() => {
     setNodes((nodes) =>

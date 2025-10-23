@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, useReactFlow } from 'reactflow';
+import * as Tone from 'tone';
+import { audioGraph } from '../AudioGraph';
 
 /**
  * DistortionNode - Distortion effect
@@ -7,10 +9,49 @@ import { Handle, Position, useReactFlow } from 'reactflow';
  */
 export function DistortionNode({ id, data }) {
   const { setNodes } = useReactFlow();
+  const effectRef = useRef(null);
 
-  const [distortion, setDistortion] = useState(data?.distortion || 0.5);
+  const [distortion, setDistortion] = useState(data?.distortion || 0.7);
   const [oversample, setOversample] = useState(data?.oversample || 'none');
   const [wet, setWet] = useState(data?.wet || 1);
+
+  // Create the Tone.js effect on mount
+  useEffect(() => {
+    const effect = new Tone.Distortion({
+      distortion: distortion,
+      oversample: oversample,
+      wet: wet
+    });
+    effectRef.current = effect;
+    audioGraph.registerNode(id, effect);
+
+    return () => {
+      audioGraph.unregisterNode(id);
+      effect.dispose();
+      effectRef.current = null;
+    };
+  }, [id]);
+
+  // Update distortion amount
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.distortion = distortion;
+    }
+  }, [distortion]);
+
+  // Update oversample
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.oversample = oversample;
+    }
+  }, [oversample]);
+
+  // Update wet/dry mix
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.wet.value = wet;
+    }
+  }, [wet]);
 
   useEffect(() => {
     setNodes((nodes) =>
@@ -49,8 +90,8 @@ export function DistortionNode({ id, data }) {
         <input
           type="range"
           min="0"
-          max="1"
-          step="0.01"
+          max="5"
+          step="0.05"
           value={distortion}
           onChange={(e) => setDistortion(parseFloat(e.target.value))}
           onMouseDown={(e) => e.stopPropagation()}

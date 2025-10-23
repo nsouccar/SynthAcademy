@@ -448,6 +448,12 @@ class AudioGraph {
             // Audio sources: oscillators, filters, or other envelopes (in audio path)
             if (sourceNode && (
               sourceNode.type === 'oscNode' ||
+              sourceNode.type === 'pulseOscNode' ||
+              sourceNode.type === 'sineOscNode' ||
+              sourceNode.type === 'squareOscNode' ||
+              sourceNode.type === 'sawtoothOscNode' ||
+              sourceNode.type === 'triangleOscNode' ||
+              sourceNode.type === 'noiseOscNode' ||
               sourceNode.type === 'filterNode' ||
               sourceNode.type === 'envelopeNode'
             )) {
@@ -474,7 +480,7 @@ class AudioGraph {
                   // Envelope connected to filter's modulation input = FILTER modulation
                   modulationTarget = 'filter';
                   console.log(`Envelope ${nodeId}: FILTER modulation (connected to modulation input)`);
-                } else if (targetNode.type === 'oscNode' && targetHandle === 'modulation-in') {
+                } else if ((targetNode.type === 'oscNode' || targetNode.type === 'pulseOscNode' || targetNode.type === 'sineOscNode' || targetNode.type === 'squareOscNode' || targetNode.type === 'sawtoothOscNode' || targetNode.type === 'triangleOscNode' || targetNode.type === 'noiseOscNode') && targetHandle === 'modulation-in') {
                   // Envelope connected to oscillator's modulation input = PITCH modulation
                   modulationTarget = 'pitch';
                   console.log(`Envelope ${nodeId}: PITCH modulation (connected to modulation input)`);
@@ -482,7 +488,7 @@ class AudioGraph {
                   // Envelope with no specific handle connecting to filter = assume FILTER modulation
                   modulationTarget = 'filter';
                   console.log(`Envelope ${nodeId}: FILTER modulation (no audio input)`);
-                } else if (targetNode.type === 'oscNode') {
+                } else if (targetNode.type === 'oscNode' || targetNode.type === 'pulseOscNode' || targetNode.type === 'sineOscNode' || targetNode.type === 'squareOscNode' || targetNode.type === 'sawtoothOscNode' || targetNode.type === 'triangleOscNode' || targetNode.type === 'noiseOscNode') {
                   // Envelope with no specific handle connecting to oscillator = assume PITCH modulation
                   modulationTarget = 'pitch';
                   console.log(`Envelope ${nodeId}: PITCH modulation (no audio input)`);
@@ -502,12 +508,12 @@ class AudioGraph {
               if (targetNode.type === 'filterNode' && targetHandle === 'modulation-in') {
                 modulationTarget = 'filter';
                 console.log(`LFO ${nodeId}: FILTER modulation`);
-              } else if (targetNode.type === 'oscNode' && targetHandle === 'modulation-in') {
+              } else if ((targetNode.type === 'oscNode' || targetNode.type === 'pulseOscNode' || targetNode.type === 'sineOscNode' || targetNode.type === 'squareOscNode' || targetNode.type === 'sawtoothOscNode' || targetNode.type === 'triangleOscNode' || targetNode.type === 'noiseOscNode') && targetHandle === 'modulation-in') {
                 modulationTarget = 'pitch';
                 console.log(`LFO ${nodeId}: PITCH modulation`);
               } else if (targetNode.type === 'filterNode') {
                 modulationTarget = 'filter';
-              } else if (targetNode.type === 'oscNode') {
+              } else if (targetNode.type === 'oscNode' || targetNode.type === 'pulseOscNode' || targetNode.type === 'sineOscNode' || targetNode.type === 'squareOscNode' || targetNode.type === 'sawtoothOscNode' || targetNode.type === 'triangleOscNode' || targetNode.type === 'noiseOscNode') {
                 modulationTarget = 'pitch';
               }
             }
