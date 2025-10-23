@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, useReactFlow } from 'reactflow';
+import * as Tone from 'tone';
+import { audioGraph } from '../AudioGraph';
 
 /**
  * DelayNode - Delay/Echo effect
@@ -7,10 +9,61 @@ import { Handle, Position, useReactFlow } from 'reactflow';
  */
 export function DelayNode({ id, data }) {
   const { setNodes } = useReactFlow();
+  const effectRef = useRef(null);
 
-  const [delayTime, setDelayTime] = useState(data?.delayTime || 0.25);
-  const [feedback, setFeedback] = useState(data?.feedback || 0.5);
-  const [wet, setWet] = useState(data?.wet || 0.5);
+  const [delayTime, setDelayTime] = useState(data?.delayTime || 0.375);
+  const [feedback, setFeedback] = useState(data?.feedback || 0.6);
+  const [wet, setWet] = useState(data?.wet || 0.6);
+
+  // Create the Tone.js effect on mount
+  useEffect(() => {
+    const effect = new Tone.FeedbackDelay({
+      delayTime: delayTime,
+      feedback: feedback,
+      wet: wet
+    });
+    effectRef.current = effect;
+    audioGraph.registerNode(id, effect);
+
+    return () => {
+      audioGraph.unregisterNode(id);
+      effect.dispose();
+      effectRef.current = null;
+    };
+  }, [id]);
+
+  // Update delay time
+  useEffect(() => {
+    if (effectRef.current && effectRef.current.delayTime) {
+      try {
+        effectRef.current.delayTime.value = delayTime;
+      } catch (e) {
+        console.error('Error setting delay time:', e);
+      }
+    }
+  }, [delayTime]);
+
+  // Update feedback
+  useEffect(() => {
+    if (effectRef.current && effectRef.current.feedback) {
+      try {
+        effectRef.current.feedback.value = feedback;
+      } catch (e) {
+        console.error('Error setting feedback:', e);
+      }
+    }
+  }, [feedback]);
+
+  // Update wet/dry mix
+  useEffect(() => {
+    if (effectRef.current && effectRef.current.wet) {
+      try {
+        effectRef.current.wet.value = wet;
+      } catch (e) {
+        console.error('Error setting wet:', e);
+      }
+    }
+  }, [wet]);
 
   useEffect(() => {
     setNodes((nodes) =>
@@ -68,7 +121,7 @@ export function DelayNode({ id, data }) {
         <input
           type="range"
           min="0"
-          max="0.9"
+          max="0.95"
           step="0.01"
           value={feedback}
           onChange={(e) => setFeedback(parseFloat(e.target.value))}

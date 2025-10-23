@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, useReactFlow } from 'reactflow';
+import * as Tone from 'tone';
+import { audioGraph } from '../AudioGraph';
 
 /**
  * ReverbNode - Reverb effect
@@ -7,10 +9,54 @@ import { Handle, Position, useReactFlow } from 'reactflow';
  */
 export function ReverbNode({ id, data }) {
   const { setNodes } = useReactFlow();
+  const effectRef = useRef(null);
 
-  const [decay, setDecay] = useState(data?.decay || 1.5);
+  const [decay, setDecay] = useState(data?.decay || 3.0);
   const [preDelay, setPreDelay] = useState(data?.preDelay || 0.01);
-  const [wet, setWet] = useState(data?.wet || 0.3);
+  const [wet, setWet] = useState(data?.wet || 0.5);
+
+  // Create the Tone.js effect on mount
+  useEffect(() => {
+    const effect = new Tone.Reverb({
+      decay: decay,
+      preDelay: preDelay,
+      wet: wet
+    });
+    effectRef.current = effect;
+    audioGraph.registerNode(id, effect);
+
+    // Reverb needs to be ready before use
+    effect.ready.then(() => {
+      console.log('Reverb ready');
+    });
+
+    return () => {
+      audioGraph.unregisterNode(id);
+      effect.dispose();
+      effectRef.current = null;
+    };
+  }, [id]);
+
+  // Update decay
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.decay = decay;
+    }
+  }, [decay]);
+
+  // Update preDelay
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.preDelay = preDelay;
+    }
+  }, [preDelay]);
+
+  // Update wet/dry mix
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.wet.value = wet;
+    }
+  }, [wet]);
 
   useEffect(() => {
     setNodes((nodes) =>
@@ -49,7 +95,7 @@ export function ReverbNode({ id, data }) {
         <input
           type="range"
           min="0.1"
-          max="10"
+          max="20"
           step="0.1"
           value={decay}
           onChange={(e) => setDecay(parseFloat(e.target.value))}

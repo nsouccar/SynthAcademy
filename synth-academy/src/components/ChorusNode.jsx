@@ -1,5 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Handle, Position, useReactFlow } from 'reactflow';
+import * as Tone from 'tone';
+import { audioGraph } from '../AudioGraph';
 
 /**
  * ChorusNode - Chorus effect
@@ -7,11 +9,70 @@ import { Handle, Position, useReactFlow } from 'reactflow';
  */
 export function ChorusNode({ id, data }) {
   const { setNodes } = useReactFlow();
+  const effectRef = useRef(null);
 
-  const [frequency, setFrequency] = useState(data?.frequency || 1.5);
-  const [delayTime, setDelayTime] = useState(data?.delayTime || 3.5);
-  const [depth, setDepth] = useState(data?.depth || 0.7);
-  const [wet, setWet] = useState(data?.wet || 0.5);
+  const [frequency, setFrequency] = useState(data?.frequency || 2.5);
+  const [delayTime, setDelayTime] = useState(data?.delayTime || 5);
+  const [depth, setDepth] = useState(data?.depth || 0.85);
+  const [wet, setWet] = useState(data?.wet || 0.65);
+
+  // Create the Tone.js effect on mount
+  useEffect(() => {
+    try {
+      const effect = new Tone.Chorus({
+        frequency: frequency,
+        delayTime: delayTime,
+        depth: depth,
+        wet: wet
+      }).start();
+      effectRef.current = effect;
+      audioGraph.registerNode(id, effect);
+
+      return () => {
+        if (effectRef.current) {
+          audioGraph.unregisterNode(id);
+          try {
+            effectRef.current.stop();
+            effectRef.current.dispose();
+          } catch (e) {
+            console.error('Error disposing chorus:', e);
+          }
+          effectRef.current = null;
+        }
+      };
+    } catch (e) {
+      console.error('Error creating chorus effect:', e);
+      return () => {}; // Return empty cleanup if creation failed
+    }
+  }, [id]);
+
+  // Update frequency
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.frequency.value = frequency;
+    }
+  }, [frequency]);
+
+  // Update delay time
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.delayTime = delayTime;
+    }
+  }, [delayTime]);
+
+  // Update depth
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.depth = depth;
+    }
+  }, [depth]);
+
+  // Update wet/dry mix
+  useEffect(() => {
+    if (effectRef.current) {
+      effectRef.current.wet.value = wet;
+    }
+  }, [wet]);
 
   useEffect(() => {
     setNodes((nodes) =>
@@ -69,7 +130,7 @@ export function ChorusNode({ id, data }) {
         <input
           type="range"
           min="2"
-          max="20"
+          max="30"
           step="0.5"
           value={delayTime}
           onChange={(e) => setDelayTime(parseFloat(e.target.value))}

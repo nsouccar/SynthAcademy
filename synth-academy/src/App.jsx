@@ -21,7 +21,6 @@ import { DistortionNode } from './components/DistortionNode';
 import { PitchShifterNode } from './components/PitchShifterNode';
 import { PhaserNode } from './components/PhaserNode';
 import { VibratoNode } from './components/VibratoNode';
-import { GuidedTutorial } from './components/GuidedTutorial';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 
@@ -57,7 +56,6 @@ const nodeTypes = {
 export default function App() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
-  const [showTutorial, setShowTutorial] = useState(false);
 
   // Handle waveform drop
   const onDrop = useCallback((event) => {
@@ -591,22 +589,6 @@ export default function App() {
           >
             Shape → Color
           </button>
-
-          {/* Tutorial Button */}
-          <button
-            onClick={() => setShowTutorial(true)}
-            style={{
-              padding: '8px 16px',
-              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-              color: '#fff',
-              border: '2px solid #fff',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
-            🎓 Start Tutorial
-          </button>
         </div>
 
         <ReactFlow
@@ -622,15 +604,6 @@ export default function App() {
           <Background />
           <Controls />
         </ReactFlow>
-
-        {/* Guided Tutorial Overlay */}
-        {showTutorial && (
-          <GuidedTutorial
-            nodes={nodes}
-            edges={edges}
-            onClose={() => setShowTutorial(false)}
-          />
-        )}
       </div>
     </div>
   );
