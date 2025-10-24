@@ -21,6 +21,7 @@ import { DistortionNode } from './components/DistortionNode';
 import { PitchShifterNode } from './components/PitchShifterNode';
 import { PhaserNode } from './components/PhaserNode';
 import { VibratoNode } from './components/VibratoNode';
+import { PianoRollNode } from './components/PianoRollNode';
 import { InteractiveTutorial } from './components/InteractiveTutorial';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
@@ -41,6 +42,7 @@ const nodeTypes = {
   noiseOscNode: NoiseOscNode,
   filterNode: FilterNode,
   pianoNode: PianoNode,
+  pianoRollNode: PianoRollNode,
   outputNode: OutputNode,
   groupNode: GroupNode,
   envelopeNode: EnvelopeNode,
@@ -58,6 +60,52 @@ export default function App() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [showTutorial, setShowTutorial] = useState(false);
+
+  // Export project as JSON file
+  const exportProject = useCallback(() => {
+    const projectData = {
+      nodes,
+      edges,
+      timestamp: Date.now(),
+      version: '1.0'
+    };
+    const dataStr = JSON.stringify(projectData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `synth-academy-project-${Date.now()}.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  }, [nodes, edges]);
+
+  // Import project from JSON file
+  const importProject = useCallback(() => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const projectData = JSON.parse(event.target.result);
+          setNodes(projectData.nodes || []);
+          setEdges(projectData.edges || []);
+          alert('Project imported successfully!');
+        } catch (err) {
+          console.error('Failed to import project:', err);
+          alert('Failed to import project. Please check the file format.');
+        }
+      };
+      reader.readAsText(file);
+    };
+    input.click();
+  }, []);
 
   // Handle waveform drop
   const onDrop = useCallback((event) => {
@@ -221,6 +269,24 @@ export default function App() {
       type: 'pianoNode',
       position: { x: 250, y: 250 },
       data: {},
+    };
+    setNodes((nds) => [...nds, newNode]);
+  }, []);
+
+  // Add a sequencer node
+  const addSequencerNode = useCallback(() => {
+    const id = `sequencer-${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'pianoRollNode',
+      position: { x: 100, y: 100 },
+      data: {
+        tempo: 120,
+        notes: [],
+        loopLength: 16, // 4 bars
+        isPlaying: false,
+        isRecording: false
+      },
     };
     setNodes((nds) => [...nds, newNode]);
   }, []);
@@ -494,6 +560,21 @@ export default function App() {
           </button>
 
           <button
+            onClick={addSequencerNode}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            + Add Sequencer
+          </button>
+
+          <button
             onClick={addOutputNode}
             style={{
               padding: '8px 16px',
@@ -675,6 +756,37 @@ export default function App() {
             }}
           >
             🎓 Learn: Better Off Alone
+          </button>
+
+          {/* Export/Import Buttons */}
+          <button
+            onClick={exportProject}
+            style={{
+              padding: '8px 16px',
+              background: '#FF9800',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            ⬇️ Export Patch
+          </button>
+
+          <button
+            onClick={importProject}
+            style={{
+              padding: '8px 16px',
+              background: '#9C27B0',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            ⬆️ Import Patch
           </button>
         </div>
 
