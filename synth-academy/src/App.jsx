@@ -21,6 +21,7 @@ import { DistortionNode } from './components/DistortionNode';
 import { PitchShifterNode } from './components/PitchShifterNode';
 import { PhaserNode } from './components/PhaserNode';
 import { VibratoNode } from './components/VibratoNode';
+import { InteractiveTutorial } from './components/InteractiveTutorial';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 
@@ -56,6 +57,7 @@ const nodeTypes = {
 export default function App() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
+  const [showTutorial, setShowTutorial] = useState(false);
 
   // Handle waveform drop
   const onDrop = useCallback((event) => {
@@ -103,8 +105,37 @@ export default function App() {
 
   // Handle connections
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
-    []
+    (params) => {
+      // If tutorial is active, validate the connection
+      if (showTutorial) {
+        const sourceNode = nodes.find(n => n.id === params.source);
+        const targetNode = nodes.find(n => n.id === params.target);
+
+        // Dispatch event for tutorial to validate
+        window.dispatchEvent(new CustomEvent('tutorialConnection', {
+          detail: { connection: params, sourceNode, targetNode }
+        }));
+
+        // Wait for tutorial response
+        const handleAccepted = () => {
+          setEdges((eds) => addEdge(params, eds));
+          window.removeEventListener('tutorialConnectionAccepted', handleAccepted);
+          window.removeEventListener('tutorialConnectionRejected', handleRejected);
+        };
+
+        const handleRejected = () => {
+          // Don't add the edge
+          window.removeEventListener('tutorialConnectionAccepted', handleAccepted);
+          window.removeEventListener('tutorialConnectionRejected', handleRejected);
+        };
+
+        window.addEventListener('tutorialConnectionAccepted', handleAccepted);
+        window.addEventListener('tutorialConnectionRejected', handleRejected);
+      } else {
+        setEdges((eds) => addEdge(params, eds));
+      }
+    },
+    [showTutorial, nodes]
   );
 
   // Handle node changes (dragging, selection, etc.)
@@ -146,8 +177,17 @@ export default function App() {
   }, []);
 
   const addSawtoothOscNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `sawtooth-${Date.now()}`, type: 'sawtoothOscNode', position: { x: 100, y: 100 }, data: {} }]);
-  }, []);
+    const nodeData = { id: `sawtooth-${Date.now()}`, type: 'sawtoothOscNode', position: { x: 350, y: 200 }, data: {} };
+
+    // If tutorial is active, dispatch custom event
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'sawtoothOscNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   const addTriangleOscNode = useCallback(() => {
     setNodes((nds) => [...nds, { id: `triangle-${Date.now()}`, type: 'triangleOscNode', position: { x: 100, y: 100 }, data: {} }]);
@@ -200,14 +240,27 @@ export default function App() {
   // Add an envelope node
   const addEnvelopeNode = useCallback(() => {
     const id = `envelope-${Date.now()}`;
-    const newNode = {
+    const nodeData = {
       id,
       type: 'envelopeNode',
-      position: { x: 400, y: 150 },
-      data: {},
+      position: { x: 600, y: 200 },
+      data: {
+        attack: 0,
+        decay: 0.1,
+        sustain: 1.0,
+        release: 0.02
+      },
     };
-    setNodes((nds) => [...nds, newNode]);
-  }, []);
+
+    // If tutorial is active, dispatch custom event
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'envelopeNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   // Add an LFO node
   const addLFONode = useCallback(() => {
@@ -227,8 +280,26 @@ export default function App() {
   }, []);
 
   const addReverbNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `reverb-${Date.now()}`, type: 'reverbNode', position: { x: 600, y: 250 }, data: {} }]);
-  }, []);
+    const nodeData = {
+      id: `reverb-${Date.now()}`,
+      type: 'reverbNode',
+      position: { x: 850, y: 200 },
+      data: {
+        wet: 0.2,
+        decay: 3.0,
+        preDelay: 0.01
+      }
+    };
+
+    // If tutorial is active, dispatch custom event
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'reverbNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   const addDelayNode = useCallback(() => {
     setNodes((nds) => [...nds, { id: `delay-${Date.now()}`, type: 'delayNode', position: { x: 600, y: 350 }, data: {} }]);
@@ -589,6 +660,22 @@ export default function App() {
           >
             Shape → Color
           </button>
+
+          {/* Tutorial Button */}
+          <button
+            onClick={() => setShowTutorial(true)}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+              color: '#fff',
+              border: '2px solid #fff',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+            }}
+          >
+            🎓 Learn: Better Off Alone
+          </button>
         </div>
 
         <ReactFlow
@@ -604,6 +691,20 @@ export default function App() {
           <Background />
           <Controls />
         </ReactFlow>
+
+        {/* Interactive Tutorial Overlay */}
+        {showTutorial && (
+          <InteractiveTutorial
+            presetKey="betterOffAlone"
+            setNodes={setNodes}
+            setEdges={setEdges}
+            onComplete={() => {
+              alert('🎉 Tutorial Complete! You built the Better Off Alone lead synth!');
+              setShowTutorial(false);
+            }}
+            onClose={() => setShowTutorial(false)}
+          />
+        )}
       </div>
     </div>
   );

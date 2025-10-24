@@ -15,6 +15,27 @@ export function ReverbNode({ id, data }) {
   const [preDelay, setPreDelay] = useState(data?.preDelay || 0.01);
   const [wet, setWet] = useState(data?.wet || 0.5);
 
+  // Tutorial mode
+  const tutorialMode = data?.tutorialMode || false;
+  const blurredParams = data?.blurredParams || [];
+
+  console.log('ReverbNode - tutorialMode:', tutorialMode, 'blurredParams:', blurredParams);
+
+  // Helper to check if a parameter should be blurred
+  const isParamBlurred = (paramName) => {
+    return tutorialMode && blurredParams.includes(paramName);
+  };
+
+  // Dispatch tutorial parameter change events
+  const handleParameterChange = (parameter, value, setter) => {
+    setter(value);
+    if (tutorialMode) {
+      window.dispatchEvent(new CustomEvent('tutorialParameterChange', {
+        detail: { nodeId: id, parameter, value }
+      }));
+    }
+  };
+
   // Create the Tone.js effect on mount
   useEffect(() => {
     const effect = new Tone.Reverb({
@@ -87,7 +108,13 @@ export function ReverbNode({ id, data }) {
       </div>
 
       {/* Decay */}
-      <div className="nodrag nopan" style={{ marginBottom: 8 }}>
+      <div className="nodrag nopan" style={{
+        marginBottom: 8,
+        filter: isParamBlurred('decay') ? 'blur(5px)' : 'none',
+        opacity: isParamBlurred('decay') ? 0.5 : 1,
+        transition: 'all 0.3s ease',
+        pointerEvents: isParamBlurred('decay') ? 'none' : 'auto'
+      }}>
         <label style={{ fontSize: '0.85em', display: 'flex', justifyContent: 'space-between' }}>
           <span>Decay:</span>
           <span>{decay.toFixed(2)} s</span>
@@ -98,7 +125,7 @@ export function ReverbNode({ id, data }) {
           max="20"
           step="0.1"
           value={decay}
-          onChange={(e) => setDecay(parseFloat(e.target.value))}
+          onChange={(e) => handleParameterChange('decay', parseFloat(e.target.value), setDecay)}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
           style={{ width: '100%', cursor: 'pointer' }}
@@ -106,7 +133,13 @@ export function ReverbNode({ id, data }) {
       </div>
 
       {/* Pre-delay */}
-      <div className="nodrag nopan" style={{ marginBottom: 8 }}>
+      <div className="nodrag nopan" style={{
+        marginBottom: 8,
+        filter: isParamBlurred('preDelay') ? 'blur(5px)' : 'none',
+        opacity: isParamBlurred('preDelay') ? 0.5 : 1,
+        transition: 'all 0.3s ease',
+        pointerEvents: isParamBlurred('preDelay') ? 'none' : 'auto'
+      }}>
         <label style={{ fontSize: '0.85em', display: 'flex', justifyContent: 'space-between' }}>
           <span>Pre-delay:</span>
           <span>{(preDelay * 1000).toFixed(0)} ms</span>
@@ -117,7 +150,7 @@ export function ReverbNode({ id, data }) {
           max="0.1"
           step="0.001"
           value={preDelay}
-          onChange={(e) => setPreDelay(parseFloat(e.target.value))}
+          onChange={(e) => handleParameterChange('preDelay', parseFloat(e.target.value), setPreDelay)}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
           style={{ width: '100%', cursor: 'pointer' }}
@@ -125,7 +158,13 @@ export function ReverbNode({ id, data }) {
       </div>
 
       {/* Wet/Dry Mix */}
-      <div className="nodrag nopan" style={{ marginBottom: 8 }}>
+      <div className="nodrag nopan" style={{
+        marginBottom: 8,
+        filter: isParamBlurred('wet') ? 'blur(5px)' : 'none',
+        opacity: isParamBlurred('wet') ? 0.5 : 1,
+        transition: 'all 0.3s ease',
+        pointerEvents: isParamBlurred('wet') ? 'none' : 'auto'
+      }}>
         <label style={{ fontSize: '0.85em', display: 'flex', justifyContent: 'space-between' }}>
           <span>Mix:</span>
           <span>{(wet * 100).toFixed(0)}%</span>
@@ -136,7 +175,7 @@ export function ReverbNode({ id, data }) {
           max="1"
           step="0.01"
           value={wet}
-          onChange={(e) => setWet(parseFloat(e.target.value))}
+          onChange={(e) => handleParameterChange('wet', parseFloat(e.target.value), setWet)}
           onMouseDown={(e) => e.stopPropagation()}
           onMouseUp={(e) => e.stopPropagation()}
           style={{ width: '100%', cursor: 'pointer' }}

@@ -29,6 +29,27 @@ export function EnvelopeNode({ id, data }) {
     const [sustain, setSustain] = useState(data?.sustain || 0.7);
     const [release, setRelease] = useState(data?.release || 1.0);
 
+    // Tutorial mode
+    const tutorialMode = data?.tutorialMode || false;
+    const blurredParams = data?.blurredParams || [];
+
+    console.log('EnvelopeNode - tutorialMode:', tutorialMode, 'blurredParams:', blurredParams);
+
+    // Helper to check if a parameter should be blurred
+    const isParamBlurred = (paramName) => {
+        return tutorialMode && blurredParams.includes(paramName);
+    };
+
+    // Dispatch tutorial parameter change events
+    const handleParameterChange = (parameter, value, setter) => {
+        setter(value);
+        if (tutorialMode) {
+            window.dispatchEvent(new CustomEvent('tutorialParameterChange', {
+                detail: { nodeId: id, parameter, value }
+            }));
+        }
+    };
+
     // Curve parameters (-1 to 1, where 0 is linear, negative is logarithmic, positive is exponential)
     const [attackCurve, setAttackCurve] = useState(data?.attackCurve || 0);
     const [decayCurve, setDecayCurve] = useState(data?.decayCurve || 0);
@@ -491,7 +512,13 @@ export function EnvelopeNode({ id, data }) {
                 </div>
 
             {/* Delay */}
-            <div style={{ marginBottom: 6 }}>
+            <div className="nodrag nopan" style={{
+                marginBottom: 6,
+                filter: isParamBlurred('delay') ? 'blur(5px)' : 'none',
+                opacity: isParamBlurred('delay') ? 0.5 : 1,
+                transition: 'all 0.3s ease',
+                pointerEvents: isParamBlurred('delay') ? 'none' : 'auto'
+            }}>
                 <label style={{ display: 'block', fontSize: '0.75em', marginBottom: 2 }}>
                     Delay: {delay.toFixed(3)}s
                 </label>
@@ -501,13 +528,19 @@ export function EnvelopeNode({ id, data }) {
                     max="2"
                     step="0.001"
                     value={delay}
-                    onChange={(e) => setDelay(Number(e.target.value))}
+                    onChange={(e) => handleParameterChange('delay', Number(e.target.value), setDelay)}
                     style={{ width: '100%' }}
                 />
             </div>
 
             {/* Attack */}
-            <div style={{ marginBottom: 6 }}>
+            <div className="nodrag nopan" style={{
+                marginBottom: 6,
+                filter: isParamBlurred('attack') ? 'blur(5px)' : 'none',
+                opacity: isParamBlurred('attack') ? 0.5 : 1,
+                transition: 'all 0.3s ease',
+                pointerEvents: isParamBlurred('attack') ? 'none' : 'auto'
+            }}>
                 <label style={{ display: 'block', fontSize: '0.75em', marginBottom: 2 }}>
                     Attack: {attack.toFixed(3)}s
                 </label>
@@ -517,13 +550,19 @@ export function EnvelopeNode({ id, data }) {
                     max="2"
                     step="0.001"
                     value={attack}
-                    onChange={(e) => setAttack(Number(e.target.value))}
+                    onChange={(e) => handleParameterChange('attack', Number(e.target.value), setAttack)}
                     style={{ width: '100%' }}
                 />
             </div>
 
             {/* Hold */}
-            <div style={{ marginBottom: 6 }}>
+            <div className="nodrag nopan" style={{
+                marginBottom: 6,
+                filter: isParamBlurred('hold') ? 'blur(5px)' : 'none',
+                opacity: isParamBlurred('hold') ? 0.5 : 1,
+                transition: 'all 0.3s ease',
+                pointerEvents: isParamBlurred('hold') ? 'none' : 'auto'
+            }}>
                 <label style={{ display: 'block', fontSize: '0.75em', marginBottom: 2 }}>
                     Hold: {hold.toFixed(3)}s
                 </label>
@@ -533,13 +572,19 @@ export function EnvelopeNode({ id, data }) {
                     max="2"
                     step="0.001"
                     value={hold}
-                    onChange={(e) => setHold(Number(e.target.value))}
+                    onChange={(e) => handleParameterChange('hold', Number(e.target.value), setHold)}
                     style={{ width: '100%' }}
                 />
             </div>
 
             {/* Decay */}
-            <div style={{ marginBottom: 6 }}>
+            <div className="nodrag nopan" style={{
+                marginBottom: 6,
+                filter: isParamBlurred('decay') ? 'blur(5px)' : 'none',
+                opacity: isParamBlurred('decay') ? 0.5 : 1,
+                transition: 'all 0.3s ease',
+                pointerEvents: isParamBlurred('decay') ? 'none' : 'auto'
+            }}>
                 <label style={{ display: 'block', fontSize: '0.75em', marginBottom: 2 }}>
                     Decay: {decay.toFixed(3)}s
                 </label>
@@ -549,13 +594,19 @@ export function EnvelopeNode({ id, data }) {
                     max="3"
                     step="0.001"
                     value={decay}
-                    onChange={(e) => setDecay(Number(e.target.value))}
+                    onChange={(e) => handleParameterChange('decay', Number(e.target.value), setDecay)}
                     style={{ width: '100%' }}
                 />
             </div>
 
             {/* Sustain */}
-            <div style={{ marginBottom: 6 }}>
+            <div className="nodrag nopan" style={{
+                marginBottom: 6,
+                filter: isParamBlurred('sustain') ? 'blur(5px)' : 'none',
+                opacity: isParamBlurred('sustain') ? 0.5 : 1,
+                transition: 'all 0.3s ease',
+                pointerEvents: isParamBlurred('sustain') ? 'none' : 'auto'
+            }}>
                 <label style={{ display: 'block', fontSize: '0.75em', marginBottom: 2 }}>
                     Sustain: {sustain.toFixed(2)}
                 </label>
@@ -565,13 +616,19 @@ export function EnvelopeNode({ id, data }) {
                     max="1"
                     step="0.01"
                     value={sustain}
-                    onChange={(e) => setSustain(Number(e.target.value))}
+                    onChange={(e) => handleParameterChange('sustain', Number(e.target.value), setSustain)}
                     style={{ width: '100%' }}
                 />
             </div>
 
             {/* Release */}
-            <div style={{ marginBottom: 6 }}>
+            <div className="nodrag nopan" style={{
+                marginBottom: 6,
+                filter: isParamBlurred('release') ? 'blur(5px)' : 'none',
+                opacity: isParamBlurred('release') ? 0.5 : 1,
+                transition: 'all 0.3s ease',
+                pointerEvents: isParamBlurred('release') ? 'none' : 'auto'
+            }}>
                 <label style={{ display: 'block', fontSize: '0.75em', marginBottom: 2 }}>
                     Release: {release.toFixed(3)}s
                 </label>
@@ -581,7 +638,7 @@ export function EnvelopeNode({ id, data }) {
                     max="5"
                     step="0.001"
                     value={release}
-                    onChange={(e) => setRelease(Number(e.target.value))}
+                    onChange={(e) => handleParameterChange('release', Number(e.target.value), setRelease)}
                     style={{ width: '100%' }}
                 />
             </div>
