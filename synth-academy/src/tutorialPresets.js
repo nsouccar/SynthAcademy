@@ -14,7 +14,7 @@ export const tutorialPresets = {
       {
         id: 'tutorial-sequencer',
         type: 'pianoRollNode',
-        position: { x: 100, y: 50 },
+        position: { x: 150, y: 100 },
         data: {
           midiFilePath: '/Samplab_YAYAYA.mid', // Path to MIDI file in public folder
           isPlaying: false,
@@ -43,7 +43,7 @@ export const tutorialPresets = {
       {
         id: 'tutorial-piano',
         type: 'pianoNode',
-        position: { x: 100, y: 500 },
+        position: { x: 150, y: 600 },
         data: {
           voiceMode: 'mono', // Mono mode for lead
         }
@@ -51,7 +51,7 @@ export const tutorialPresets = {
       {
         id: 'tutorial-sawtooth',
         type: 'sawtoothOscNode',
-        position: { x: 350, y: 200 },
+        position: { x: 500, y: 350 },
         data: {
           // Target values for "Better Off Alone" lead synth
           detune: 0,           // Target: 0
@@ -63,7 +63,7 @@ export const tutorialPresets = {
       {
         id: 'tutorial-envelope',
         type: 'envelopeNode',
-        position: { x: 600, y: 200 },
+        position: { x: 850, y: 150 },
         data: {
           // Target values for "Better Off Alone" lead synth
           attack: 0.01,   // Fast attack
@@ -75,7 +75,7 @@ export const tutorialPresets = {
       {
         id: 'tutorial-reverb',
         type: 'reverbNode',
-        position: { x: 850, y: 200 },
+        position: { x: 1200, y: 450 },
         data: {
           wet: 0.2,      // 20% wet
           decay: 3.0,    // Big size
@@ -85,7 +85,7 @@ export const tutorialPresets = {
       {
         id: 'tutorial-output',
         type: 'outputNode',
-        position: { x: 1100, y: 200 },
+        position: { x: 1550, y: 250 },
         data: {}
       }
     ],
@@ -161,6 +161,7 @@ export const tutorialPresets = {
         stepNumber: 0,
         title: "Choose the Oscillator",
         description: "Which oscillator type should we use for this bright, cutting lead sound? Drag the correct oscillator type onto the canvas. Try different types to hear how they sound!",
+        concisePrompt: "Which oscillator should we use?",
         type: 'chooseNode',
         requiredNodeType: 'sawtoothOscNode',
         requiredNodeId: 'tutorial-sawtooth',
@@ -185,6 +186,7 @@ export const tutorialPresets = {
         stepNumber: 1,
         title: "Adjust Detune",
         description: "Great choice! Now adjust the Detune parameter. Play with it to hear how it affects the sound!",
+        concisePrompt: "Adjust the Detune",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-sawtooth',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -202,6 +204,7 @@ export const tutorialPresets = {
         stepNumber: 2,
         title: "Adjust Octave",
         description: "Now adjust the Octave Offset to get the right pitch range.",
+        concisePrompt: "Adjust the Octave",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-sawtooth',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -219,6 +222,7 @@ export const tutorialPresets = {
         stepNumber: 3,
         title: "Adjust Unison Voices",
         description: "Set the number of unison voices for a richer sound.",
+        concisePrompt: "Adjust Unison Voices",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-sawtooth',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -236,6 +240,7 @@ export const tutorialPresets = {
         stepNumber: 4,
         title: "Adjust Unison Spread",
         description: "Finally, adjust the spread between unison voices.",
+        concisePrompt: "Adjust Unison Spread",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-sawtooth',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -255,6 +260,7 @@ export const tutorialPresets = {
         stepNumber: 5,
         title: "Add the Envelope",
         description: "Oscillator done! Now try playing the piano. Notice the sound doesn't stop when you release the key? We need an envelope to shape how the sound changes over time. Drag an Envelope node onto the canvas and connect it between the oscillator and reverb.",
+        concisePrompt: "Add an Envelope",
         type: 'chooseNode',
         requiredNodeType: 'envelopeNode',
         requiredNodeId: 'tutorial-envelope',
@@ -278,6 +284,7 @@ export const tutorialPresets = {
         stepNumber: 6,
         title: "Adjust Envelope Attack",
         description: "Perfect! Now shape the envelope. Start with the Attack parameter - how quickly the sound reaches full volume.",
+        concisePrompt: "Adjust Attack",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-envelope',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -294,6 +301,7 @@ export const tutorialPresets = {
         stepNumber: 7,
         title: "Adjust Envelope Decay",
         description: "Great! Now adjust the Decay time - how long it takes to fall from peak to sustain level.",
+        concisePrompt: "Adjust Decay",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-envelope',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -310,6 +318,7 @@ export const tutorialPresets = {
         stepNumber: 8,
         title: "Adjust Envelope Sustain",
         description: "Perfect! Adjust the Sustain level - the volume while holding the note.",
+        concisePrompt: "Adjust Sustain",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-envelope',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -326,6 +335,7 @@ export const tutorialPresets = {
         stepNumber: 9,
         title: "Adjust Envelope Release",
         description: "Almost there! Adjust the Release time - how long the sound fades after releasing the key.",
+        concisePrompt: "Adjust Release",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-envelope',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -344,6 +354,7 @@ export const tutorialPresets = {
         stepNumber: 10,
         title: "Choose the Effect",
         description: "Envelope done! Now let's add some space to the sound. Which effect should we use? Drag different effects onto the canvas to hear how they sound!",
+        concisePrompt: "Which effect should we add?",
         type: 'chooseNode',
         requiredNodeType: 'reverbNode',
         requiredNodeId: 'tutorial-reverb',
@@ -364,6 +375,7 @@ export const tutorialPresets = {
         stepNumber: 11,
         title: "Adjust Reverb Mix",
         description: "Excellent choice! Now adjust the wet/dry mix to control how much reverb to add.",
+        concisePrompt: "Adjust Reverb Mix",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-reverb',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -379,6 +391,7 @@ export const tutorialPresets = {
         stepNumber: 12,
         title: "Adjust Reverb Decay",
         description: "Good! Now adjust the decay time - how long the reverb tail lasts.",
+        concisePrompt: "Adjust Reverb Decay",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-reverb',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -394,6 +407,7 @@ export const tutorialPresets = {
         stepNumber: 13,
         title: "Adjust Reverb Pre-Delay",
         description: "Finally, adjust the pre-delay - the gap before the reverb starts.",
+        concisePrompt: "Adjust Pre-Delay",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-reverb',
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
@@ -411,6 +425,7 @@ export const tutorialPresets = {
         stepNumber: 14,
         title: "Tutorial Complete!",
         description: "Perfect! You've built the complete 'Better Off Alone' lead synth! Try playing some notes to hear your creation.",
+        concisePrompt: "Tutorial Complete!",
         type: 'complete',
         focusNodeId: null,
         visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
