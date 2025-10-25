@@ -317,6 +317,18 @@ class AudioGraph {
           connections: template.connections
         });
 
+        // Log envelope node data specifically
+        const envelopeNodes = template.nodes.filter(n => n.type === 'envelopeNode');
+        envelopeNodes.forEach(envNode => {
+          console.log(`Envelope node in template:`, {
+            id: envNode.canvasNodeId,
+            attack: envNode.data.attack,
+            decay: envNode.data.decay,
+            sustain: envNode.data.sustain,
+            release: envNode.data.release
+          });
+        });
+
         // Stop any active voices using the old template before updating
         voiceManagerInstance.stopVoicesForTemplate(outputNode.id);
 

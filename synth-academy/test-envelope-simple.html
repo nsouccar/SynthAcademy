@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
+</head>
+<body>
+    <button id="play">Play with Sustain=0</button>
+    <p>You should hear: quick attack, then 2 second drop to SILENCE, then silence while holding</p>
+    
+    <script>
+        const osc = new Tone.Oscillator(440, 'sine');
+        const env = new Tone.AmplitudeEnvelope({
+            attack: 0.1,
+            decay: 2.0,
+            sustain: 0.0,  // Should go to SILENCE
+            release: 0.5
+        });
+        
+        osc.connect(env);
+        env.toDestination();
+        osc.start();
+        
+        console.log('Envelope values:', {
+            attack: env.attack,
+            decay: env.decay,
+            sustain: env.sustain,
+            release: env.release
+        });
+        
+        document.getElementById('play').addEventListener('click', () => {
+            env.triggerAttack();
+            console.log('Attack triggered');
+            
+            setTimeout(() => {
+                env.triggerRelease();
+                console.log('Release triggered');
+            }, 5000); // Hold for 5 seconds
+        });
+    </script>
+</body>
+</html>
