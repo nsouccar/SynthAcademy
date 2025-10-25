@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/tone@15.1.22/build/Tone.js"></script>
+</head>
+<body>
+    <button id="play">Play Note</button>
+    <button id="stop">Stop Note</button>
+    
+    <script>
+        const synth = new Tone.Synth();
+        const envelope = new Tone.AmplitudeEnvelope({
+            attack: 0.5,
+            decay: 2.0,
+            sustain: 0.2,
+            release: 1.0
+        });
+        
+        synth.connect(envelope);
+        envelope.toDestination();
+        
+        console.log('Envelope settings:', {
+            attack: envelope.attack,
+            decay: envelope.decay,
+            sustain: envelope.sustain,
+            release: envelope.release
+        });
+        
+        document.getElementById('play').addEventListener('click', () => {
+            console.log('Triggering attack');
+            synth.triggerAttack('C4');
+            envelope.triggerAttack();
+        });
+        
+        document.getElementById('stop').addEventListener('click', () => {
+            console.log('Triggering release');
+            synth.triggerRelease();
+            envelope.triggerRelease();
+        });
+    </script>
+</body>
+</html>

@@ -23,6 +23,7 @@ import { PhaserNode } from './components/PhaserNode';
 import { VibratoNode } from './components/VibratoNode';
 import { PianoRollNode } from './components/PianoRollNode';
 import { InteractiveTutorial } from './components/InteractiveTutorial';
+import { SongBank } from './components/SongBank';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 
@@ -60,6 +61,24 @@ export default function App() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [selectedTutorialKey, setSelectedTutorialKey] = useState(null);
+  const [tutorialLevel, setTutorialLevel] = useState(1);
+
+  // Handle song selection from the song bank
+  const handleSongSelect = useCallback((song, level) => {
+    // Map song IDs to tutorial preset keys
+    const songToPresetMap = {
+      'better-off-alone': 'betterOffAlone'
+      // Add more mappings as tutorials are created
+    };
+
+    const presetKey = songToPresetMap[song.id];
+    if (presetKey) {
+      setSelectedTutorialKey(presetKey);
+      setTutorialLevel(level);
+      setShowTutorial(true);
+    }
+  }, []);
 
   // Export project as JSON file
   const exportProject = useCallback(() => {
@@ -217,37 +236,75 @@ export default function App() {
 
   // Add oscillator nodes
   const addSineOscNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `sine-${Date.now()}`, type: 'sineOscNode', position: { x: 100, y: 100 }, data: {} }]);
-  }, []);
-
-  const addSquareOscNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `square-${Date.now()}`, type: 'squareOscNode', position: { x: 100, y: 100 }, data: {} }]);
-  }, []);
-
-  const addSawtoothOscNode = useCallback(() => {
-    const nodeData = { id: `sawtooth-${Date.now()}`, type: 'sawtoothOscNode', position: { x: 350, y: 200 }, data: {} };
-
-    // If tutorial is active, dispatch custom event
+    const nodeData = { id: `sine-${Date.now()}`, type: 'sineOscNode', position: { x: 100, y: 100 }, data: {} };
     if (showTutorial) {
       window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
-        detail: { nodeType: 'sawtoothOscNode', nodeData }
+        detail: { nodeType: 'sineOscNode', nodeData }
       }));
     } else {
       setNodes((nds) => [...nds, nodeData]);
     }
   }, [showTutorial]);
 
+  const addSquareOscNode = useCallback(() => {
+    const nodeData = { id: `square-${Date.now()}`, type: 'squareOscNode', position: { x: 100, y: 100 }, data: {} };
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'squareOscNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
+
+  const addSawtoothOscNode = useCallback(() => {
+    console.log('addSawtoothOscNode CLICKED! showTutorial:', showTutorial);
+    const nodeData = { id: `sawtooth-${Date.now()}`, type: 'sawtoothOscNode', position: { x: 350, y: 200 }, data: {} };
+
+    // If tutorial is active, dispatch custom event
+    if (showTutorial) {
+      console.log('DISPATCHING tutorialNodeAdd event', { nodeType: 'sawtoothOscNode', nodeData });
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'sawtoothOscNode', nodeData }
+      }));
+    } else {
+      console.log('Adding node directly (not in tutorial mode)');
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
+
   const addTriangleOscNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `triangle-${Date.now()}`, type: 'triangleOscNode', position: { x: 100, y: 100 }, data: {} }]);
-  }, []);
+    const nodeData = { id: `triangle-${Date.now()}`, type: 'triangleOscNode', position: { x: 100, y: 100 }, data: {} };
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'triangleOscNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   const addPulseOscNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `pulse-${Date.now()}`, type: 'pulseOscNode', position: { x: 100, y: 100 }, data: { pulseWidth: 0.5 } }]);
-  }, []);
+    const nodeData = { id: `pulse-${Date.now()}`, type: 'pulseOscNode', position: { x: 100, y: 100 }, data: { pulseWidth: 0.5 } };
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'pulseOscNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   const addNoiseOscNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `noise-${Date.now()}`, type: 'noiseOscNode', position: { x: 100, y: 100 }, data: {} }]);
-  }, []);
+    const nodeData = { id: `noise-${Date.now()}`, type: 'noiseOscNode', position: { x: 100, y: 100 }, data: {} };
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'noiseOscNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   // Add a filter node at the center of the viewport
   const addFilterNode = useCallback(() => {
@@ -342,8 +399,15 @@ export default function App() {
 
   // Add effect nodes
   const addChorusNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `chorus-${Date.now()}`, type: 'chorusNode', position: { x: 600, y: 150 }, data: {} }]);
-  }, []);
+    const nodeData = { id: `chorus-${Date.now()}`, type: 'chorusNode', position: { x: 600, y: 150 }, data: {} };
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'chorusNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   const addReverbNode = useCallback(() => {
     const nodeData = {
@@ -368,12 +432,26 @@ export default function App() {
   }, [showTutorial]);
 
   const addDelayNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `delay-${Date.now()}`, type: 'delayNode', position: { x: 600, y: 350 }, data: {} }]);
-  }, []);
+    const nodeData = { id: `delay-${Date.now()}`, type: 'delayNode', position: { x: 600, y: 350 }, data: {} };
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'delayNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   const addDistortionNode = useCallback(() => {
-    setNodes((nds) => [...nds, { id: `distortion-${Date.now()}`, type: 'distortionNode', position: { x: 600, y: 450 }, data: {} }]);
-  }, []);
+    const nodeData = { id: `distortion-${Date.now()}`, type: 'distortionNode', position: { x: 600, y: 450 }, data: {} };
+    if (showTutorial) {
+      window.dispatchEvent(new CustomEvent('tutorialNodeAdd', {
+        detail: { nodeType: 'distortionNode', nodeData }
+      }));
+    } else {
+      setNodes((nds) => [...nds, nodeData]);
+    }
+  }, [showTutorial]);
 
   const addPitchShifterNode = useCallback(() => {
     setNodes((nds) => [...nds, { id: `pitchshifter-${Date.now()}`, type: 'pitchShifterNode', position: { x: 700, y: 150 }, data: {} }]);
@@ -507,7 +585,7 @@ export default function App() {
           display: 'flex',
           gap: 8,
           flexWrap: 'wrap',
-          maxWidth: 'calc(100vw - 300px)'
+          maxWidth: 'calc(100vw - 600px)' // Account for both left and right sidebars
         }}>
           {/* Oscillators */}
           <button onClick={addSineOscNode} style={{ padding: '8px 16px', background: '#4a9eff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
@@ -742,22 +820,6 @@ export default function App() {
             Shape → Color
           </button>
 
-          {/* Tutorial Button */}
-          <button
-            onClick={() => setShowTutorial(true)}
-            style={{
-              padding: '8px 16px',
-              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-              color: '#fff',
-              border: '2px solid #fff',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 'bold',
-            }}
-          >
-            🎓 Learn: Better Off Alone
-          </button>
-
           {/* Export/Import Buttons */}
           <button
             onClick={exportProject}
@@ -805,19 +867,29 @@ export default function App() {
         </ReactFlow>
 
         {/* Interactive Tutorial Overlay */}
-        {showTutorial && (
+        {showTutorial && selectedTutorialKey && (
           <InteractiveTutorial
-            presetKey="betterOffAlone"
+            presetKey={selectedTutorialKey}
+            level={tutorialLevel}
             setNodes={setNodes}
             setEdges={setEdges}
             onComplete={() => {
-              alert('🎉 Tutorial Complete! You built the Better Off Alone lead synth!');
+              alert('🎉 Tutorial Complete! You nailed it!');
               setShowTutorial(false);
+              setSelectedTutorialKey(null);
+              setTutorialLevel(1);
             }}
-            onClose={() => setShowTutorial(false)}
+            onClose={() => {
+              setShowTutorial(false);
+              setSelectedTutorialKey(null);
+              setTutorialLevel(1);
+            }}
           />
         )}
       </div>
+
+      {/* Song Bank Sidebar */}
+      <SongBank onSelectSong={handleSongSelect} />
     </div>
   );
 }

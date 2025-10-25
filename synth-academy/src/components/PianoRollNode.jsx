@@ -70,6 +70,11 @@ export function PianoRollNode({ id, data }) {
     const metronomeRef = useRef(null);
     const metronomeSynthRef = useRef(null);
 
+    // Reference synth playback (for tutorial compact mode)
+    const [isPlayingReference, setIsPlayingReference] = useState(false);
+    const referencePartRef = useRef(null);
+    const referenceSynthRef = useRef(null);
+
     // Canvas dimensions - dynamic canvas that grows with content
     const PIANO_WIDTH = 80;
     const MIN_MIDI_NOTE = 21; // A0 (full piano range)
@@ -658,6 +663,40 @@ export function PianoRollNode({ id, data }) {
         };
     }, []);
 
+    // Setup reference synth for tutorial mode (correct "Better Off Alone" sound)
+    useEffect(() => {
+        if (!data?.compactMode || !data?.referenceParams) return;
+
+        // Create the reference synth chain: Sawtooth -> Envelope -> Reverb -> Output
+        const reverb = new Tone.Reverb({
+            decay: data.referenceParams.reverb?.decay || 3.0,
+            preDelay: data.referenceParams.reverb?.preDelay || 0.01,
+            wet: data.referenceParams.reverb?.wet || 0.2
+        }).toDestination();
+
+        reverb.generate();
+
+        const synth = new Tone.PolySynth(Tone.Synth, {
+            oscillator: {
+                type: 'sawtooth'
+            },
+            envelope: {
+                attack: data.referenceParams.envelope?.attack || 0.01,
+                decay: data.referenceParams.envelope?.decay || 0.1,
+                sustain: data.referenceParams.envelope?.sustain || 1.0,
+                release: data.referenceParams.envelope?.release || 0.02
+            },
+            volume: -6
+        }).connect(reverb);
+
+        referenceSynthRef.current = synth;
+
+        return () => {
+            synth.dispose();
+            reverb.dispose();
+        };
+    }, [data?.compactMode, data?.referenceParams]);
+
     // Playback system using Tone.js Transport
     const startPlayback = useCallback(() => {
         Tone.start(); // Ensure audio context is started
@@ -785,6 +824,71 @@ export function PianoRollNode({ id, data }) {
         };
     }, [isPlaying, tempo, notes, loopLength]); // Restart playback when these change
 
+    // Reference synth playback (for tutorial mode)
+    const startReferencePlayback = useCallback(() => {
+        if (!referenceSynthRef.current) {
+            console.warn('Reference synth not initialized');
+            return;
+        }
+
+        Tone.start();
+
+        // Clear any existing scheduled events
+        Tone.Transport.cancel();
+
+        // Set tempo
+        Tone.Transport.bpm.value = tempo;
+
+        // Create a Tone.Part for the reference synth
+        const part = new Tone.Part((time, note) => {
+            const noteName = Tone.Frequency(note.pitch, 'midi').toNote();
+            const durationInSeconds = note.duration * (60 / tempo);
+            referenceSynthRef.current.triggerAttackRelease(noteName, durationInSeconds, time, note.velocity);
+        }, notes.map(note => ({
+            time: `0:${note.time}`,
+            pitch: note.pitch,
+            duration: note.duration,
+            velocity: note.velocity
+        })));
+
+        part.loop = true;
+        part.loopEnd = `0:${loopLength}`;
+        referencePartRef.current = part;
+
+        // Start transport
+        Tone.Transport.start();
+        part.start(0);
+
+        console.log('Reference playback started');
+    }, [notes, tempo, loopLength]);
+
+    const stopReferencePlayback = useCallback(() => {
+        if (referencePartRef.current) {
+            referencePartRef.current.stop();
+            referencePartRef.current.dispose();
+            referencePartRef.current = null;
+        }
+
+        Tone.Transport.cancel();
+        Tone.Transport.stop();
+        Tone.Transport.position = 0;
+
+        console.log('Reference playback stopped');
+    }, []);
+
+    // Handle reference playback state
+    useEffect(() => {
+        if (isPlayingReference) {
+            startReferencePlayback();
+        } else {
+            stopReferencePlayback();
+        }
+
+        return () => {
+            stopReferencePlayback();
+        };
+    }, [isPlayingReference, startReferencePlayback, stopReferencePlayback]);
+
     // Recording system
     const startRecording = useCallback(() => {
         Tone.start();
@@ -828,6 +932,65 @@ export function PianoRollNode({ id, data }) {
             // Cleanup
         };
     }, [isRecording]);
+
+    // Auto-load MIDI file if midiFilePath is provided in data
+    useEffect(() => {
+        const loadMidiFromPath = async () => {
+            if (!data?.midiFilePath) return;
+            if (notes.length > 0) return; // Already loaded
+
+            try {
+                console.log('PianoRollNode - Auto-loading MIDI file from:', data.midiFilePath);
+                const response = await fetch(data.midiFilePath);
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch MIDI file: ${response.status} ${response.statusText}`);
+                }
+
+                const arrayBuffer = await response.arrayBuffer();
+                const midi = new Midi(arrayBuffer);
+
+                // Extract notes from all tracks
+                const importedNotes = [];
+                let maxTime = 0;
+
+                midi.tracks.forEach(track => {
+                    track.notes.forEach(note => {
+                        // Convert MIDI time (seconds) to beats
+                        const timeInBeats = note.time * (tempo / 60);
+                        const durationInBeats = note.duration * (tempo / 60);
+
+                        importedNotes.push({
+                            time: timeInBeats,
+                            pitch: note.midi,
+                            duration: durationInBeats,
+                            velocity: note.velocity
+                        });
+
+                        maxTime = Math.max(maxTime, timeInBeats + durationInBeats);
+                    });
+                });
+
+                // Set the notes
+                setNotes(importedNotes);
+
+                // Auto-adjust loop length to fit the MIDI
+                const newLoopLength = Math.ceil(maxTime / 4) * 4; // Round up to nearest 4 beats (1 bar)
+                setLoopLength(newLoopLength);
+
+                // Set tempo from MIDI if available
+                if (midi.header.tempos.length > 0) {
+                    setTempo(midi.header.tempos[0].bpm);
+                }
+
+                console.log(`PianoRollNode - Auto-loaded ${importedNotes.length} notes from MIDI file`);
+            } catch (error) {
+                console.error('PianoRollNode - Error auto-loading MIDI file:', error);
+            }
+        };
+
+        loadMidiFromPath();
+    }, [data?.midiFilePath]); // Only run when midiFilePath changes
 
     // Import MIDI file
     const handleMidiFileImport = useCallback(async (event) => {
@@ -925,6 +1088,94 @@ export function PianoRollNode({ id, data }) {
             alert('Failed to export MIDI file.');
         }
     }, [notes, tempo]);
+
+    // Compact mode for tutorials - just show play buttons
+    if (data?.compactMode) {
+        return (
+            <div
+                className="nodrag nopan"
+                style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    borderRadius: 12,
+                    border: '2px solid #4CAF50',
+                    padding: '16px 24px',
+                    color: '#fff',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 12,
+                    minWidth: 250
+                }}
+            >
+                <div style={{
+                    fontSize: '14px',
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    marginBottom: 4
+                }}>
+                    🎵 Tutorial Melody
+                </div>
+
+                {/* Your synth button */}
+                <button
+                    onClick={() => {
+                        if (isPlayingReference) setIsPlayingReference(false);
+                        setIsPlaying(!isPlaying);
+                    }}
+                    style={{
+                        padding: '12px 24px',
+                        background: isPlaying ? '#f44336' : '#4CAF50',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        fontWeight: 'bold',
+                        fontSize: '14px',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        transition: 'all 0.2s'
+                    }}
+                    onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                >
+                    {isPlaying ? '⏸ Stop Your Synth' : '▶ Play Your Synth'}
+                </button>
+
+                {/* Reference synth button (only show if referenceParams provided) */}
+                {data?.referenceParams && (
+                    <button
+                        onClick={() => {
+                            if (isPlaying) setIsPlaying(false);
+                            setIsPlayingReference(!isPlayingReference);
+                        }}
+                        style={{
+                            padding: '12px 24px',
+                            background: isPlayingReference ? '#f44336' : '#FF9800',
+                            color: '#fff',
+                            border: 'none',
+                            borderRadius: 8,
+                            cursor: 'pointer',
+                            fontWeight: 'bold',
+                            fontSize: '14px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            transition: 'all 0.2s'
+                        }}
+                        onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
+                        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                    >
+                        {isPlayingReference ? '⏸ Stop Reference' : '🎯 Play Reference'}
+                    </button>
+                )}
+
+                <div style={{
+                    fontSize: '11px',
+                    textAlign: 'center',
+                    opacity: 0.8
+                }}>
+                    {notes.length} notes • {tempo} BPM
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div

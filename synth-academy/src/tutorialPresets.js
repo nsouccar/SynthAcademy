@@ -12,9 +12,38 @@ export const tutorialPresets = {
     // Complete node configuration
     nodes: [
       {
+        id: 'tutorial-sequencer',
+        type: 'pianoRollNode',
+        position: { x: 100, y: 50 },
+        data: {
+          midiFilePath: '/Samplab_YAYAYA.mid', // Path to MIDI file in public folder
+          isPlaying: false,
+          tempo: 140,
+          notes: [], // Will be loaded from MIDI file
+          loopLength: 16,
+          canvasHeight: 400,
+          canvasWidth: 1000,
+          compactMode: true, // Show only play button in tutorial mode
+          referenceParams: {
+            // Correct "Better Off Alone" synth parameters
+            envelope: {
+              attack: 0.01,
+              decay: 0.1,
+              sustain: 1.0,
+              release: 0.02
+            },
+            reverb: {
+              wet: 0.2,
+              decay: 3.0,
+              preDelay: 0.01
+            }
+          }
+        }
+      },
+      {
         id: 'tutorial-piano',
         type: 'pianoNode',
-        position: { x: 100, y: 200 },
+        position: { x: 100, y: 500 },
         data: {
           voiceMode: 'mono', // Mono mode for lead
         }
@@ -37,9 +66,7 @@ export const tutorialPresets = {
         position: { x: 600, y: 200 },
         data: {
           // Target values for "Better Off Alone" lead synth
-          delay: 0,       // No delay
           attack: 0.01,   // Fast attack
-          hold: 0,        // No hold
           decay: 0.1,     // Short decay
           sustain: 1.0,   // 100% sustain
           release: 0.02   // 20ms release
@@ -129,17 +156,46 @@ export const tutorialPresets = {
 
     // Learning steps - user clicks through each parameter one by one
     steps: [
+      // Step 0: Choose the oscillator type
+      {
+        stepNumber: 0,
+        title: "Choose the Oscillator",
+        description: "Which oscillator type should we use for this bright, cutting lead sound? Drag the correct oscillator type onto the canvas. Try different types to hear how they sound!",
+        type: 'chooseNode',
+        requiredNodeType: 'sawtoothOscNode',
+        requiredNodeId: 'tutorial-sawtooth',
+        hint: "Think about which waveform has a bright, harsh sound with lots of harmonics.",
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb'],
+        blurredParams: {
+          'tutorial-envelope': ['attack', 'decay', 'sustain', 'release'],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          detune: 0,
+          octaveOffset: 0,
+          unisonVoices: 1,
+          unisonSpread: 50
+        },
+        blurAllParameters: true  // All parameters start blurred
+      },
+
       // Sawtooth Oscillator: detune, octaveOffset, unisonVoices, unisonSpread (in order from top to bottom)
       {
         stepNumber: 1,
         title: "Adjust Detune",
-        description: "Start by adjusting the Detune parameter. Play with it to hear how it affects the sound!",
+        description: "Great choice! Now adjust the Detune parameter. Play with it to hear how it affects the sound!",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-sawtooth',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb'],
         blurredParams: {
-          'tutorial-sawtooth': ['octaveOffset', 'unisonVoices', 'unisonSpread'], // All except detune
+          'tutorial-sawtooth': ['octaveOffset', 'unisonVoices', 'unisonSpread'],
+          'tutorial-envelope': ['attack', 'decay', 'sustain', 'release'],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          detune: 0
         },
       },
       {
@@ -148,10 +204,15 @@ export const tutorialPresets = {
         description: "Now adjust the Octave Offset to get the right pitch range.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-sawtooth',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb'],
         blurredParams: {
-          'tutorial-sawtooth': ['unisonVoices', 'unisonSpread'], // All except detune and octaveOffset
+          'tutorial-sawtooth': ['unisonVoices', 'unisonSpread'],
+          'tutorial-envelope': ['attack', 'decay', 'sustain', 'release'],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          octaveOffset: 0
         },
       },
       {
@@ -160,10 +221,15 @@ export const tutorialPresets = {
         description: "Set the number of unison voices for a richer sound.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-sawtooth',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb'],
         blurredParams: {
-          'tutorial-sawtooth': ['unisonSpread'], // All except detune, octaveOffset, and unisonVoices
+          'tutorial-sawtooth': ['unisonSpread'],
+          'tutorial-envelope': ['attack', 'decay', 'sustain', 'release'],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          unisonVoices: 1
         },
       },
       {
@@ -172,122 +238,171 @@ export const tutorialPresets = {
         description: "Finally, adjust the spread between unison voices.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-sawtooth',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-envelope', 'tutorial-reverb'],
         blurredParams: {
-          'tutorial-sawtooth': [], // All oscillator params unblurred
+          'tutorial-sawtooth': [],
+          'tutorial-envelope': ['attack', 'decay', 'sustain', 'release'],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          unisonSpread: 50
         },
       },
 
-      // Envelope: delay, attack, hold, decay, sustain, release (in order from top to bottom)
+      // Step 5: Choose envelope
       {
         stepNumber: 5,
-        title: "Adjust Envelope Delay",
-        description: "Oscillator done! Now shape the envelope. Start with the Delay parameter.",
-        type: 'adjustParameter',
-        focusNodeId: 'tutorial-envelope',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-reverb', 'tutorial-output'],
+        title: "Add the Envelope",
+        description: "Oscillator done! Now try playing the piano. Notice the sound doesn't stop when you release the key? We need an envelope to shape how the sound changes over time. Drag an Envelope node onto the canvas and connect it between the oscillator and reverb.",
+        type: 'chooseNode',
+        requiredNodeType: 'envelopeNode',
+        requiredNodeId: 'tutorial-envelope',
+        hint: "The envelope controls how the volume changes from note-on to note-off (Attack, Decay, Sustain, Release).",
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-reverb'],
         blurredParams: {
-          'tutorial-envelope': ['attack', 'hold', 'decay', 'sustain', 'release'], // All except delay
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
         },
+        targetParameters: {
+          attack: 0.01,
+          decay: 0.1,
+          sustain: 1.0,
+          release: 0.02
+        },
+        blurAllParameters: true
       },
+
+      // Envelope: attack, decay, sustain, release
       {
         stepNumber: 6,
         title: "Adjust Envelope Attack",
-        description: "Good! Now adjust the Attack time.",
+        description: "Perfect! Now shape the envelope. Start with the Attack parameter - how quickly the sound reaches full volume.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-envelope',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-reverb'],
         blurredParams: {
-          'tutorial-envelope': ['hold', 'decay', 'sustain', 'release'], // All except delay and attack
+          'tutorial-envelope': ['decay', 'sustain', 'release'],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          attack: 0.01
         },
       },
       {
         stepNumber: 7,
-        title: "Adjust Envelope Hold",
-        description: "Nice! Adjust the Hold time.",
+        title: "Adjust Envelope Decay",
+        description: "Great! Now adjust the Decay time - how long it takes to fall from peak to sustain level.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-envelope',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-reverb'],
         blurredParams: {
-          'tutorial-envelope': ['decay', 'sustain', 'release'], // All except delay, attack, and hold
+          'tutorial-envelope': ['sustain', 'release'],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          decay: 0.1
         },
       },
       {
         stepNumber: 8,
-        title: "Adjust Envelope Decay",
-        description: "Great! Now adjust the Decay time.",
+        title: "Adjust Envelope Sustain",
+        description: "Perfect! Adjust the Sustain level - the volume while holding the note.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-envelope',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-reverb'],
         blurredParams: {
-          'tutorial-envelope': ['sustain', 'release'], // All except delay, attack, hold, and decay
+          'tutorial-envelope': ['release'],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          sustain: 1.0
         },
       },
       {
         stepNumber: 9,
-        title: "Adjust Envelope Sustain",
-        description: "Perfect! Adjust the Sustain level.",
-        type: 'adjustParameter',
-        focusNodeId: 'tutorial-envelope',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-reverb', 'tutorial-output'],
-        blurredParams: {
-          'tutorial-envelope': ['release'], // All except delay, attack, hold, decay, and sustain
-        },
-      },
-      {
-        stepNumber: 10,
         title: "Adjust Envelope Release",
-        description: "Almost there! Adjust the Release time.",
+        description: "Almost there! Adjust the Release time - how long the sound fades after releasing the key.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-envelope',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: ['tutorial-reverb'],
         blurredParams: {
-          'tutorial-envelope': [], // All envelope params unblurred
+          'tutorial-envelope': [],
+          'tutorial-reverb': ['wet', 'decay', 'preDelay']
+        },
+        targetParameters: {
+          release: 0.02
         },
       },
 
-      // Reverb: decay, preDelay, wet (in order from top to bottom as shown in UI)
+      // Step 10: Choose effect (Reverb)
+      {
+        stepNumber: 10,
+        title: "Choose the Effect",
+        description: "Envelope done! Now let's add some space to the sound. Which effect should we use? Drag different effects onto the canvas to hear how they sound!",
+        type: 'chooseNode',
+        requiredNodeType: 'reverbNode',
+        requiredNodeId: 'tutorial-reverb',
+        hint: "Think about which effect adds a sense of space and room ambience.",
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-output'],
+        blurredNodeIds: [],
+        blurredParams: {},
+        targetParameters: {
+          wet: 0.2,
+          decay: 3.0,
+          preDelay: 0.01
+        },
+        blurAllParameters: true
+      },
+
+      // Reverb: wet, decay, preDelay
       {
         stepNumber: 11,
-        title: "Adjust Reverb Decay",
-        description: "Envelope done! Add space with reverb. Start with the decay time.",
+        title: "Adjust Reverb Mix",
+        description: "Excellent choice! Now adjust the wet/dry mix to control how much reverb to add.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-reverb',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: [],
         blurredParams: {
-          'tutorial-reverb': ['preDelay', 'wet'], // All except decay
+          'tutorial-reverb': ['decay', 'preDelay'],
+        },
+        targetParameters: {
+          wet: 0.2
         },
       },
       {
         stepNumber: 12,
-        title: "Adjust Reverb Pre-Delay",
-        description: "Good! Now adjust the pre-delay time.",
+        title: "Adjust Reverb Decay",
+        description: "Good! Now adjust the decay time - how long the reverb tail lasts.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-reverb',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: [],
         blurredParams: {
-          'tutorial-reverb': ['wet'], // All except decay and preDelay
+          'tutorial-reverb': ['preDelay'],
+        },
+        targetParameters: {
+          decay: 3.0
         },
       },
       {
         stepNumber: 13,
-        title: "Adjust Reverb Mix",
-        description: "Finally, adjust the wet/dry mix.",
+        title: "Adjust Reverb Pre-Delay",
+        description: "Finally, adjust the pre-delay - the gap before the reverb starts.",
         type: 'adjustParameter',
         focusNodeId: 'tutorial-reverb',
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
-        blurredNodeIds: ['tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        blurredNodeIds: [],
         blurredParams: {
-          'tutorial-reverb': [], // All reverb params unblurred
+          'tutorial-reverb': [],
+        },
+        targetParameters: {
+          preDelay: 0.01
         },
       },
 
@@ -295,10 +410,10 @@ export const tutorialPresets = {
       {
         stepNumber: 14,
         title: "Tutorial Complete!",
-        description: "Perfect! You've adjusted all the parameters for the 'Better Off Alone' lead synth!",
+        description: "Perfect! You've built the complete 'Better Off Alone' lead synth! Try playing some notes to hear your creation.",
         type: 'complete',
         focusNodeId: null,
-        visibleNodeIds: ['tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
+        visibleNodeIds: ['tutorial-sequencer', 'tutorial-piano', 'tutorial-sawtooth', 'tutorial-envelope', 'tutorial-reverb', 'tutorial-output'],
         blurredNodeIds: [],
         blurredParams: {},
       }

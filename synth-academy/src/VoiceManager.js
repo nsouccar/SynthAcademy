@@ -134,6 +134,7 @@ class VoiceManager {
     // Trigger release phase of envelopes BEFORE stopping
     voice.nodes.forEach(node => {
       if (node.type === 'envelopeNode' && node.audioNode.triggerRelease) {
+        console.log(`Triggering envelope release: R=${node.data.release}s`);
         node.audioNode.triggerRelease();
       }
     });
@@ -329,8 +330,8 @@ class VoiceManager {
             dedicatedAdjustedFrequency = frequency * Math.pow(2, nodeTemplate.data.octaveOffset);
           }
 
-          // Check if this is a sawtooth with unison enabled
-          const unisonVoices = nodeTemplate.type === 'sawtoothOscNode' && nodeTemplate.data.unisonVoices > 1
+          // Check if unison is enabled (for any oscillator type)
+          const unisonVoices = nodeTemplate.data.unisonVoices > 1
             ? nodeTemplate.data.unisonVoices
             : 1;
           const unisonSpread = nodeTemplate.data.unisonSpread || 50; // Cents
@@ -405,12 +406,40 @@ class VoiceManager {
 
         case 'noiseOscNode':
           // NOISE OSCILLATOR: Create new one for each voice
-          audioNode = new Tone.Noise('white');
 
-          // Start noise with velocity-based volume
-          const noiseVolume = -20 + (velocity * 10);
-          audioNode.volume.value = noiseVolume;
-          audioNode.start();
+          // Check if unison is enabled
+          const noiseUnisonVoices = nodeTemplate.data.unisonVoices > 1
+            ? nodeTemplate.data.unisonVoices
+            : 1;
+
+          if (noiseUnisonVoices > 1) {
+            // Create multiple noise generators for unison
+            const noiseMerger = new Tone.Gain();
+            const noiseOscillators = [];
+
+            for (let i = 0; i < noiseUnisonVoices; i++) {
+              const noiseOsc = new Tone.Noise('white');
+
+              // Calculate volume compensation
+              const volumeCompensation = -3 * Math.log2(noiseUnisonVoices);
+              const voiceVolume = -20 + (velocity * 10) + volumeCompensation;
+              noiseOsc.volume.value = voiceVolume;
+
+              noiseOsc.connect(noiseMerger);
+              noiseOsc.start();
+              noiseOscillators.push({ osc: noiseOsc });
+            }
+
+            audioNode = noiseMerger;
+            audioNode._unisonOscillators = noiseOscillators;
+
+          } else {
+            // Single noise generator
+            audioNode = new Tone.Noise('white');
+            const noiseVolume = -20 + (velocity * 10);
+            audioNode.volume.value = noiseVolume;
+            audioNode.start();
+          }
           break;
 
         case 'filterNode':
@@ -450,15 +479,35 @@ class VoiceManager {
 
           if (modulationTarget === 'volume') {
             // Volume envelope - use AmplitudeEnvelope in signal chain
-            audioNode = new Tone.AmplitudeEnvelope({
-              attack: nodeTemplate.data.attack || 0.01,
+            console.log('Raw nodeTemplate.data:', nodeTemplate.data);
+
+            const envelopeParams = {
+              attack: nodeTemplate.data.attack ?? 0.01,
               attackCurve: getCurveType(nodeTemplate.data.attackCurve),
-              decay: nodeTemplate.data.decay || 0.1,
+              decay: nodeTemplate.data.decay ?? 0.1,
               decayCurve: getCurveType(nodeTemplate.data.decayCurve),
-              sustain: nodeTemplate.data.sustain || 0.7,
-              release: nodeTemplate.data.release || 1.0,
+              sustain: nodeTemplate.data.sustain ?? 0.7,  // Use ?? instead of || so 0 is valid
+              release: nodeTemplate.data.release ?? 1.0,
               releaseCurve: getCurveType(nodeTemplate.data.releaseCurve)
+            };
+
+            console.log('Creating AmplitudeEnvelope with params:', envelopeParams);
+            audioNode = new Tone.AmplitudeEnvelope(envelopeParams);
+
+            // Check the envelope's current value
+            console.log('Envelope created. Current value:', audioNode.value);
+            console.log('Envelope ADSR values:', {
+              attack: audioNode.attack,
+              decay: audioNode.decay,
+              sustain: audioNode.sustain,
+              release: audioNode.release
             });
+
+            // CRITICAL: Check if sustain is actually a number or a Tone.Signal
+            console.log('Sustain type check:', typeof audioNode.sustain, audioNode.sustain);
+            if (audioNode.sustain && audioNode.sustain.value !== undefined) {
+              console.log('Sustain as Signal.value:', audioNode.sustain.value);
+            }
 
             // Note: Tone.js doesn't support delay/hold in AmplitudeEnvelope
             // We'll handle them manually if needed later
@@ -469,12 +518,12 @@ class VoiceManager {
             // The envelope output (0 to 1) will scale the filter's frequency parameter
 
             audioNode = new Tone.Envelope({
-              attack: nodeTemplate.data.attack || 0.01,
+              attack: nodeTemplate.data.attack ?? 0.01,
               attackCurve: getCurveType(nodeTemplate.data.attackCurve),
-              decay: nodeTemplate.data.decay || 0.1,
+              decay: nodeTemplate.data.decay ?? 0.1,
               decayCurve: getCurveType(nodeTemplate.data.decayCurve),
-              sustain: nodeTemplate.data.sustain || 0.7,
-              release: nodeTemplate.data.release || 1.0,
+              sustain: nodeTemplate.data.sustain ?? 0.7,
+              release: nodeTemplate.data.release ?? 1.0,
               releaseCurve: getCurveType(nodeTemplate.data.releaseCurve)
             });
 
@@ -486,12 +535,12 @@ class VoiceManager {
             // Use a regular Envelope that outputs 0-1, will be scaled later
             console.log('Creating PITCH envelope with params:', nodeTemplate.data);
             audioNode = new Tone.Envelope({
-              attack: nodeTemplate.data.attack || 0.01,
+              attack: nodeTemplate.data.attack ?? 0.01,
               attackCurve: getCurveType(nodeTemplate.data.attackCurve),
-              decay: nodeTemplate.data.decay || 0.1,
+              decay: nodeTemplate.data.decay ?? 0.1,
               decayCurve: getCurveType(nodeTemplate.data.decayCurve),
-              sustain: nodeTemplate.data.sustain || 0.7,
-              release: nodeTemplate.data.release || 1.0,
+              sustain: nodeTemplate.data.sustain ?? 0.7,
+              release: nodeTemplate.data.release ?? 1.0,
               releaseCurve: getCurveType(nodeTemplate.data.releaseCurve)
             });
 
@@ -503,10 +552,10 @@ class VoiceManager {
             console.warn(`Envelope with unknown modulation target: ${modulationTarget}`);
             // Default to amplitude envelope
             audioNode = new Tone.AmplitudeEnvelope({
-              attack: nodeTemplate.data.attack || 0.01,
-              decay: nodeTemplate.data.decay || 0.1,
-              sustain: nodeTemplate.data.sustain || 0.7,
-              release: nodeTemplate.data.release || 1.0
+              attack: nodeTemplate.data.attack ?? 0.01,
+              decay: nodeTemplate.data.decay ?? 0.1,
+              sustain: nodeTemplate.data.sustain ?? 0.7,
+              release: nodeTemplate.data.release ?? 1.0
             });
           }
           break;
@@ -749,15 +798,40 @@ class VoiceManager {
           }
         } else {
           // Normal audio connection
+          console.log(`Connecting ${sourceNode.type} → ${targetNode.type}`);
+          console.log(`  Source audioNode:`, sourceNode.audioNode);
+          console.log(`  Target audioNode:`, targetNode.audioNode);
+
           sourceNode.audioNode.connect(targetNode.audioNode);
           console.log(`✓ Connected ${sourceNode.type} → ${targetNode.type}${sourceNode.type === 'envelopeNode' ? ' (volume envelope in audio path)' : ''}`);
+
+          // Extra logging for envelope connections
+          if (targetNode.type === 'envelopeNode' && targetNode.modulationTarget === 'volume') {
+            console.log(`   ⚡ OSCILLATOR CONNECTED TO VOLUME ENVELOPE - audio should pass through envelope!`);
+          }
         }
       }
     });
 
+    // Log the complete voice structure before triggering
+    console.log('=== COMPLETE VOICE STRUCTURE ===');
+    voiceNodes.forEach((node, index) => {
+      console.log(`Node ${index}: ${node.type}`);
+      if (node.audioNode) {
+        console.log(`  Has audioNode:`, node.audioNode.constructor.name);
+        if (node.audioNode._out && node.audioNode._out.destination) {
+          console.log(`  Connected to:`, node.audioNode._out.destination.constructor.name);
+        }
+      }
+    });
+    console.log('================================');
+
     // Trigger all envelopes
     voiceNodes.forEach(node => {
       if (node.type === 'envelopeNode' && node.audioNode.triggerAttack) {
+        console.log(`Triggering envelope attack:`);
+        console.log(`  From node.data: A=${node.data.attack}s D=${node.data.decay}s S=${node.data.sustain} R=${node.data.release}s`);
+        console.log(`  Actual envelope: A=${node.audioNode.attack} D=${node.audioNode.decay} S=${node.audioNode.sustain} R=${node.audioNode.release}`);
         node.audioNode.triggerAttack();
       }
     });
@@ -789,6 +863,7 @@ class VoiceManager {
 
       if (!hasOutgoingConnection && !isModulator && node.audioNode) {
         // This is a leaf node that produces audio - connect it to destination
+        console.log(`⚠️ CONNECTING LEAF NODE TO DESTINATION: ${node.type} (index ${index})`);
 
         // For canvas nodes (shared effects/filters), only connect once
         if (node.isCanvasNode) {
@@ -804,6 +879,8 @@ class VoiceManager {
           console.log(`✓ Connected voice leaf node ${node.type} (index ${index}) to destination`);
           leafNodesConnected++;
         }
+      } else {
+        console.log(`  → Skipping node ${index} (${node.type}): hasOutgoing=${hasOutgoingConnection}, isModulator=${isModulator}`);
       }
     });
 

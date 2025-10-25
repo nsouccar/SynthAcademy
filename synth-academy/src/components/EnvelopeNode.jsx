@@ -511,28 +511,6 @@ export function EnvelopeNode({ id, data }) {
                     />
                 </div>
 
-            {/* Delay */}
-            <div className="nodrag nopan" style={{
-                marginBottom: 6,
-                filter: isParamBlurred('delay') ? 'blur(5px)' : 'none',
-                opacity: isParamBlurred('delay') ? 0.5 : 1,
-                transition: 'all 0.3s ease',
-                pointerEvents: isParamBlurred('delay') ? 'none' : 'auto'
-            }}>
-                <label style={{ display: 'block', fontSize: '0.75em', marginBottom: 2 }}>
-                    Delay: {delay.toFixed(3)}s
-                </label>
-                <input
-                    type="range"
-                    min="0"
-                    max="2"
-                    step="0.001"
-                    value={delay}
-                    onChange={(e) => handleParameterChange('delay', Number(e.target.value), setDelay)}
-                    style={{ width: '100%' }}
-                />
-            </div>
-
             {/* Attack */}
             <div className="nodrag nopan" style={{
                 marginBottom: 6,
@@ -551,28 +529,6 @@ export function EnvelopeNode({ id, data }) {
                     step="0.001"
                     value={attack}
                     onChange={(e) => handleParameterChange('attack', Number(e.target.value), setAttack)}
-                    style={{ width: '100%' }}
-                />
-            </div>
-
-            {/* Hold */}
-            <div className="nodrag nopan" style={{
-                marginBottom: 6,
-                filter: isParamBlurred('hold') ? 'blur(5px)' : 'none',
-                opacity: isParamBlurred('hold') ? 0.5 : 1,
-                transition: 'all 0.3s ease',
-                pointerEvents: isParamBlurred('hold') ? 'none' : 'auto'
-            }}>
-                <label style={{ display: 'block', fontSize: '0.75em', marginBottom: 2 }}>
-                    Hold: {hold.toFixed(3)}s
-                </label>
-                <input
-                    type="range"
-                    min="0"
-                    max="2"
-                    step="0.001"
-                    value={hold}
-                    onChange={(e) => handleParameterChange('hold', Number(e.target.value), setHold)}
                     style={{ width: '100%' }}
                 />
             </div>
