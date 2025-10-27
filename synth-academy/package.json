@@ -31,6 +31,7 @@
     "vite": "^7.1.7"
   },
   "optionalDependencies": {
+    "@esbuild/linux-x64": "^0.25.11",
     "@rollup/rollup-linux-x64-gnu": "^4.52.5"
   }
 }
