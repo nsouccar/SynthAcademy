@@ -435,12 +435,7 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
         setNodes((nds) => [...nds, tutorialNode]);
         setTutorialNodeIds(prev => {
           const newSet = new Set([...prev, step.requiredNodeId]);
-
-          // Auto-advance to the next step after state has updated
-          setTimeout(() => {
-            handleNext();
-          }, 1000);
-
+          // Don't auto-advance - let user click the arrow to continue
           return newSet;
         });
       } else {
@@ -518,111 +513,144 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
 
   // Level 1: Guided Tutorial Mode
   const step = preset.steps[currentStep];
-  const progress = ((currentStep + 1) / preset.steps.length) * 100;
+
+  // Determine which buttons to flash based on current step
+  const getFlashingButtons = () => {
+    if (!step) return [];
+
+    if (step.type === 'chooseNode') {
+      const nodeType = step.requiredNodeType;
+      // Flash all oscillator buttons
+      if (nodeType.includes('Osc')) {
+        return ['oscillators'];
+      }
+    } else if (step.nodeId === 'tutorial-envelope') {
+      return ['envelope'];
+    } else if (step.nodeId === 'tutorial-reverb') {
+      return ['effects'];
+    }
+    return [];
+  };
+
+  const flashingButtons = getFlashingButtons();
+
+  // Get simple instruction text
+  const getInstruction = () => {
+    if (!step) return '';
+
+    if (step.type === 'chooseNode') {
+      const nodeType = step.requiredNodeType;
+      // Check what type of node to choose
+      if (nodeType.includes('Osc')) {
+        return 'Choose an Oscillator';
+      } else if (nodeType === 'envelopeNode') {
+        return 'Choose the Envelope to Shape the Sound';
+      } else if (nodeType === 'reverbNode' || nodeType === 'delayNode' || nodeType === 'chorusNode' ||
+                 nodeType === 'distortionNode' || nodeType === 'phaserNode' || nodeType === 'vibratoNode' ||
+                 nodeType === 'pitchShifterNode') {
+        return 'Choose an Effect';
+      }
+      return 'Choose a Node';
+    } else if (step.type === 'adjustParameter') {
+      return 'Adjust the Settings';
+    } else if (step.type === 'complete') {
+      return 'Tutorial Complete';
+    }
+    return step.title;
+  };
+
+  // Store flashing categories in window for App.jsx to access
+  useEffect(() => {
+    window.tutorialFlashCategories = flashingButtons;
+    window.dispatchEvent(new CustomEvent('tutorialFlashUpdate'));
+
+    return () => {
+      window.tutorialFlashCategories = [];
+      window.dispatchEvent(new CustomEvent('tutorialFlashUpdate'));
+    };
+  }, [flashingButtons.join(',')]);
 
   return (
     <>
-      {/* Add rainbow blur animation styles */}
+      {/* StarCrush Font */}
       <style>{`
-        @keyframes rainbow-blur {
-          0% { filter: blur(8px) hue-rotate(0deg) saturate(3); }
-          25% { filter: blur(8px) hue-rotate(90deg) saturate(3); }
-          50% { filter: blur(8px) hue-rotate(180deg) saturate(3); }
-          75% { filter: blur(8px) hue-rotate(270deg) saturate(3); }
-          100% { filter: blur(8px) hue-rotate(360deg) saturate(3); }
+        @font-face {
+          font-family: 'StarCrush';
+          src: url('/Star Crush.ttf') format('truetype');
+        }
+
+        @keyframes flash {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.3; }
+        }
+
+        @keyframes arrowBounce {
+          0%, 100% { transform: translateX(0); }
+          50% { transform: translateX(10px); }
         }
       `}</style>
 
-      {/* Bottom instruction bar */}
+      {/* Simple Instruction Text with Arrow */}
       <div style={{
         position: 'fixed',
-        bottom: 0,
-        left: 0,
-        width: '100%',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        padding: '20px',
-        color: 'white',
-        boxShadow: '0 -4px 6px rgba(0,0,0,0.3)',
-        zIndex: 1000
+        bottom: '40px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        zIndex: 1000,
+        display: 'flex',
+        alignItems: 'center',
+        gap: '30px'
       }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-          <h2 style={{ margin: 0, fontSize: '24px' }}>{preset.name}</h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'rgba(255,255,255,0.2)',
-              border: 'none',
-              color: 'white',
-              padding: '8px 16px',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 'bold'
-            }}
-          >
-            ✕ Exit Tutorial
-          </button>
-        </div>
-
-        <div style={{ marginBottom: '15px' }}>
-          <div style={{ fontSize: '14px', marginBottom: '5px' }}>
-            Step {currentStep + 1} of {preset.steps.length}
-          </div>
-          <div style={{
-            width: '100%',
-            height: '8px',
-            background: 'rgba(255,255,255,0.2)',
-            borderRadius: '4px',
-            overflow: 'hidden'
-          }}>
-            <div style={{
-              width: `${progress}%`,
-              height: '100%',
-              background: '#4CAF50',
-              transition: 'width 0.3s ease'
-            }} />
-          </div>
-        </div>
-
         <div style={{
-          background: 'rgba(0,0,0,0.2)',
-          padding: '15px',
-          borderRadius: '8px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
+          fontFamily: 'StarCrush, sans-serif',
+          fontSize: '64px',
+          color: '#000',
+          textShadow: '4px 4px 0 rgba(255,255,255,0.3)',
+          letterSpacing: '4px',
+          textAlign: 'center'
         }}>
-          <div style={{ flex: 1 }}>
-            <h3 style={{ margin: '0 0 8px 0', fontSize: '18px' }}>
-              {step.type === 'adjustParameter' ? '🎚️ ' : step.type === 'complete' ? '🎉 ' : '🔌 '}
-              {step.title}
-            </h3>
-            <p style={{ margin: 0, fontSize: '14px', opacity: 0.9 }}>{step.description}</p>
-          </div>
-
-          {step.type !== 'complete' && (
-            <button
-              onClick={handleNext}
-              style={{
-                background: '#4CAF50',
-                border: 'none',
-                color: 'white',
-                padding: '12px 24px',
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                fontSize: '16px',
-                marginLeft: '20px',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                transition: 'all 0.2s ease'
-              }}
-              onMouseOver={(e) => e.target.style.background = '#45a049'}
-              onMouseOut={(e) => e.target.style.background = '#4CAF50'}
-            >
-              Next →
-            </button>
-          )}
+          {getInstruction()}
         </div>
+        <button
+          onClick={handleNext}
+          style={{
+            fontSize: '64px',
+            animation: 'arrowBounce 1.5s ease-in-out infinite',
+            filter: 'drop-shadow(2px 2px 4px rgba(0,0,0,0.3))',
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            padding: 0,
+            color: '#000',
+            transition: 'transform 0.2s ease'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.2)'}
+          onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        >
+          →
+        </button>
       </div>
+
+      {/* Exit Button */}
+      <button
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          top: '20px',
+          right: '20px',
+          background: 'rgba(0,0,0,0.5)',
+          border: '2px solid white',
+          color: 'white',
+          padding: '10px 20px',
+          borderRadius: 8,
+          cursor: 'pointer',
+          fontWeight: 'bold',
+          fontSize: '16px',
+          zIndex: 1001
+        }}
+      >
+        ✕ Exit
+      </button>
     </>
   );
 }

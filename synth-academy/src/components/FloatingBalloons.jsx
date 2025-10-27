@@ -21,7 +21,11 @@ function FallingBalloon({ initialPosition, audioLevel, fallSpeed, driftSpeed }) 
       // Reset balloon to top when it falls off screen
       if (newY < -15) {
         startTimeRef.current = Date.now();
-        const newX = (Math.random() - 0.5) * 20;
+        // Avoid center by biasing to edges: -20 to -5 or 5 to 20
+        const isLeftSide = Math.random() > 0.5;
+        const newX = isLeftSide
+          ? -20 + (Math.random() * 15)  // -20 to -5
+          : 5 + (Math.random() * 15);   // 5 to 20
         setPosition([newX, 15, initialPosition[2]]);
       } else {
         meshRef.current.position.set(
@@ -52,16 +56,11 @@ function FallingBalloon({ initialPosition, audioLevel, fallSpeed, driftSpeed }) 
 }
 
 export function FloatingBalloons({ audioLevel }) {
-  // Create 8 balloons starting at different heights and positions
+  // Create just 3 balloons - sporadic timing and positions, avoiding center
   const balloons = useMemo(() => [
-    { position: [-8, 15, -5], fallSpeed: 1.2, driftSpeed: 0.5 },
-    { position: [8, 12, -5], fallSpeed: 1.0, driftSpeed: 0.7 },
-    { position: [0, 18, -8], fallSpeed: 0.9, driftSpeed: 0.6 },
-    { position: [-5, 10, -6], fallSpeed: 1.1, driftSpeed: 0.8 },
-    { position: [6, 14, -7], fallSpeed: 1.3, driftSpeed: 0.55 },
-    { position: [-3, 16, -6], fallSpeed: 0.95, driftSpeed: 0.65 },
-    { position: [4, 11, -8], fallSpeed: 1.15, driftSpeed: 0.75 },
-    { position: [-6, 13, -7], fallSpeed: 1.05, driftSpeed: 0.6 }
+    { position: [-12, 15, -5], fallSpeed: 0.8, driftSpeed: 0.4 },
+    { position: [14, 20, -6], fallSpeed: 1.3, driftSpeed: 0.6 },
+    { position: [-16, 10, -7], fallSpeed: 1.0, driftSpeed: 0.5 }
   ], []);
 
   return (

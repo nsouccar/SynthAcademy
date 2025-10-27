@@ -36,12 +36,26 @@ export function SineOscNode({ data, id }) {
         synth.volume.value = -Infinity;
         synthRef.current = synth;
 
+        // Add waveform analyzer for sun rays visualization
+        const waveform = new Tone.Waveform(128);
+        synth.connect(waveform);
+
+        // Emit waveform data periodically
+        const intervalId = setInterval(() => {
+            const waveformArray = waveform.getValue();
+            window.dispatchEvent(new CustomEvent('oscillatorWaveform', {
+                detail: { waveform: waveformArray, nodeId: id, type: 'sine' }
+            }));
+        }, 50); // Update 20 times per second
+
         synth.start();
         synth.toDestination();
 
         audioGraph.registerNode(id, synth);
 
         return () => {
+            clearInterval(intervalId);
+            waveform.dispose();
             audioGraph.unregisterNode(id);
             synthRef.current = null;
         };

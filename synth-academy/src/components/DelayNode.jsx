@@ -59,11 +59,15 @@ export function DelayNode({ id, data }) {
     if (effectRef.current && effectRef.current.wet) {
       try {
         effectRef.current.wet.value = wet;
+        // Dispatch delay change for aurora lights
+        window.dispatchEvent(new CustomEvent('delayChange', {
+          detail: { nodeId: id, wet: wet }
+        }));
       } catch (e) {
         console.error('Error setting wet:', e);
       }
     }
-  }, [wet]);
+  }, [wet, id]);
 
   useEffect(() => {
     setNodes((nodes) =>

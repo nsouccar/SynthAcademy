@@ -273,7 +273,7 @@ export function TutorialDualSequencer({ midiFilePath, referenceChain, onClose })
             fontSize: '18px',
             fontWeight: 'bold'
           }}>
-            🎵 Tutorial Sequencer
+            Tutorial Sequencer
           </h3>
           <p style={{
             margin: '4px 0 0 0',
@@ -375,7 +375,7 @@ export function TutorialDualSequencer({ midiFilePath, referenceChain, onClose })
             transition: 'all 0.2s'
           }}
         >
-          {isPlaying ? '⏸ Stop' : '▶ Play Both Synths'}
+          {isPlaying ? 'Stop' : 'Play Both Synths'}
         </button>
       </div>
 

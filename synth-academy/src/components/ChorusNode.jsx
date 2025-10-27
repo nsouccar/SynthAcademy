@@ -64,8 +64,12 @@ export function ChorusNode({ id, data }) {
   useEffect(() => {
     if (effectRef.current) {
       effectRef.current.depth = depth;
+      // Dispatch chorus change for aurora lights
+      window.dispatchEvent(new CustomEvent('chorusChange', {
+        detail: { nodeId: id, depth: depth }
+      }));
     }
-  }, [depth]);
+  }, [depth, id]);
 
   // Update wet/dry mix
   useEffect(() => {

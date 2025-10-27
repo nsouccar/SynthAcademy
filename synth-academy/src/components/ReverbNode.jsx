@@ -34,6 +34,12 @@ export function ReverbNode({ id, data }) {
         detail: { nodeId: id, parameter, value }
       }));
     }
+    // Dispatch reverb wet change for background blur effect
+    if (parameter === 'wet') {
+      window.dispatchEvent(new CustomEvent('reverbWetChange', {
+        detail: { nodeId: id, wet: value }
+      }));
+    }
   };
 
   // Create the Tone.js effect on mount

@@ -70,8 +70,12 @@ export function PhaserNode({ id, data }) {
   useEffect(() => {
     if (effectRef.current) {
       effectRef.current.wet.value = wet;
+      // Dispatch phaser change for aurora lights
+      window.dispatchEvent(new CustomEvent('phaserChange', {
+        detail: { nodeId: id, wet: wet }
+      }));
     }
-  }, [wet]);
+  }, [wet, id]);
 
   useEffect(() => {
     setNodes((nodes) =>

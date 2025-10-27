@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import ReactFlow, { addEdge, Background, Controls, applyNodeChanges, applyEdgeChanges, ReactFlowProvider } from 'reactflow';
-import './y2k-theme.css';
 import { OscNode } from './components/OscNode';
 import { PulseOscNode } from './components/PulseOscNode';
 import { SineOscNode } from './components/SineOscNode';
@@ -25,6 +24,8 @@ import { PianoRollNode } from './components/PianoRollNode';
 import { InteractiveTutorial } from './components/InteractiveTutorial';
 import { SongBank } from './components/SongBank';
 import { FloatingBalloons } from './components/FloatingBalloons';
+import { SunRays } from './components/SunRays';
+import { AuroraLights } from './components/AuroraLights';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 import * as Tone from 'tone';
@@ -69,9 +70,67 @@ function AppContent() {
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
   const [flashingNodeType, setFlashingNodeType] = useState(null);
+  const [flashingCategories, setFlashingCategories] = useState([]);
+  const [reverbAmount, setReverbAmount] = useState(0);
+  const [distortionAmount, setDistortionAmount] = useState(0);
 
   // Check if there are any envelope nodes on the canvas
   const hasEnvelopeNode = nodes.some(node => node.type === 'envelopeNode');
+
+  // Calculate reverb amount from all reverb nodes
+  useEffect(() => {
+    const reverbNodes = nodes.filter(node => node.type === 'reverbNode');
+    if (reverbNodes.length > 0) {
+      // Get the maximum wet value from all reverb nodes (0 to 1)
+      const maxWet = Math.max(...reverbNodes.map(node => node.data?.wet || 0));
+      setReverbAmount(maxWet);
+    } else {
+      setReverbAmount(0);
+    }
+  }, [nodes]);
+
+  // Calculate background blur based on reverb amount (0px to 20px)
+  const backgroundBlur = reverbAmount * 20;
+
+  // Calculate background distortion based on distortion amount
+  const backgroundDistortion = distortionAmount * 10; // 0 to 10px
+
+  // Listen for distortion changes
+  useEffect(() => {
+    const handleDistortionChange = (event) => {
+      setDistortionAmount(event.detail.distortion || 0);
+    };
+
+    window.addEventListener('distortionChange', handleDistortionChange);
+    return () => window.removeEventListener('distortionChange', handleDistortionChange);
+  }, []);
+
+  // Listen for tutorial flash category updates
+  useEffect(() => {
+    const handleFlashUpdate = () => {
+      setFlashingCategories(window.tutorialFlashCategories || []);
+    };
+
+    window.addEventListener('tutorialFlashUpdate', handleFlashUpdate);
+    return () => window.removeEventListener('tutorialFlashUpdate', handleFlashUpdate);
+  }, []);
+
+  // Listen for reverb wet parameter changes for background blur effect
+  useEffect(() => {
+    const handleReverbChange = (event) => {
+      // Update reverb amount immediately when wet parameter changes
+      const reverbNodes = nodes.filter(node => node.type === 'reverbNode');
+      if (reverbNodes.length > 0) {
+        const maxWet = Math.max(...reverbNodes.map(node =>
+          node.id === event.detail.nodeId ? event.detail.wet : (node.data?.wet || 0)
+        ));
+        setReverbAmount(maxWet);
+      }
+    };
+
+    window.addEventListener('reverbWetChange', handleReverbChange);
+    return () => window.removeEventListener('reverbWetChange', handleReverbChange);
+  }, [nodes]);
 
   // Listen for tutorial hint events
   useEffect(() => {
@@ -808,45 +867,6 @@ function AppContent() {
             user-select: none;
           }
 
-          /* 3D Rope Effect for Edges */
-          .react-flow__edge-path {
-            stroke-width: 12 !important;
-            stroke: url(#ropeGradient) !important;
-            filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.4))
-                    drop-shadow(-1px -1px 2px rgba(255, 255, 255, 0.1));
-          }
-
-          .react-flow__edge.selected .react-flow__edge-path {
-            stroke: url(#ropeGradientSelected) !important;
-            stroke-width: 14 !important;
-            filter: drop-shadow(3px 3px 5px rgba(0, 0, 0, 0.6))
-                    drop-shadow(-2px -2px 3px rgba(255, 255, 255, 0.2));
-          }
-
-
-          .react-flow__handle {
-            width: 10px !important;
-            height: 10px !important;
-            opacity: 1 !important;
-            border-radius: 50% !important;
-            border: none !important;
-          }
-
-          .react-flow__handle:hover {
-            opacity: 1 !important;
-            width: 12px !important;
-            height: 12px !important;
-          }
-
-          /* Hide all node controls */
-          .react-flow__resize-control,
-          .react-flow__node-toolbar,
-          .react-flow__node-resizer,
-          .react-flow__resize-control-handle,
-          .react-flow__nodesselection-rect {
-            display: none !important;
-            visibility: hidden !important;
-          }
 
         `}</style>
 
@@ -868,6 +888,12 @@ function AppContent() {
           </defs>
         </svg>
 
+        {/* Aurora Light Beams - Effect-reactive */}
+        <AuroraLights />
+
+        {/* Animated Sun with Oscillator-Reactive Rays */}
+        <SunRays audioLevel={audioLevel} />
+
         {/* Floating 3D Balloons - only show when envelope node exists */}
         {hasEnvelopeNode && <FloatingBalloons audioLevel={audioLevel} />}
 
@@ -884,7 +910,7 @@ function AppContent() {
             overflow: 'hidden'
           }}
         >
-          {/* Single seamless background layer with parallax and blur */}
+          {/* Single seamless background layer with parallax, reverb blur, and distortion warp */}
           <div style={{
             position: 'absolute',
             top: '-50%',
@@ -895,8 +921,10 @@ function AppContent() {
             backgroundSize: '800px 400px',
             backgroundRepeat: 'repeat',
             backgroundPosition: `${panX * 0.2}px ${panY * 0.2}px`,
-            filter: 'blur(2px)',
-            opacity: 0.95
+            filter: `blur(${2 + backgroundBlur}px) url(#distortionFilter)`,
+            opacity: 0.95,
+            transition: 'filter 0.3s ease',
+            transform: backgroundDistortion > 0 ? `scale(${1 + backgroundDistortion * 0.02})` : 'none'
           }} />
         </div>
 
@@ -920,7 +948,7 @@ function AppContent() {
           {/* Oscillators - Dreamy Sky Blue */}
           <button
             onClick={addSineOscNode}
-            className={`floating-button ${flashingNodeType === 'oscillator' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
             data-tooltip="SINE"
             style={{
               animationDelay: '0s',
@@ -933,7 +961,7 @@ function AppContent() {
           </button>
           <button
             onClick={addSquareOscNode}
-            className={`floating-button ${flashingNodeType === 'oscillator' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
             data-tooltip="SQUARE"
             style={{
               animationDelay: '0.2s',
@@ -946,7 +974,7 @@ function AppContent() {
           </button>
           <button
             onClick={addSawtoothOscNode}
-            className={`floating-button ${flashingNodeType === 'oscillator' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
             data-tooltip="SAWTOOTH"
             style={{
               animationDelay: '0.4s',
@@ -959,7 +987,7 @@ function AppContent() {
           </button>
           <button
             onClick={addTriangleOscNode}
-            className={`floating-button ${flashingNodeType === 'oscillator' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
             data-tooltip="TRIANGLE"
             style={{
               animationDelay: '0.6s',
@@ -972,7 +1000,7 @@ function AppContent() {
           </button>
           <button
             onClick={addPulseOscNode}
-            className={`floating-button ${flashingNodeType === 'oscillator' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
             data-tooltip="PULSE"
             style={{
               animationDelay: '0.8s',
@@ -985,7 +1013,7 @@ function AppContent() {
           </button>
           <button
             onClick={addNoiseOscNode}
-            className={`floating-button ${flashingNodeType === 'oscillator' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
             data-tooltip="NOISE"
             style={{
               animationDelay: '1.0s',
@@ -1077,7 +1105,7 @@ function AppContent() {
           {/* Modulators - Dreamy Rose Pink */}
           <button
             onClick={addEnvelopeNode}
-            className={`floating-button ${flashingNodeType === 'envelopeNode' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'envelopeNode' || flashingCategories.includes('envelope') ? 'flash-hint' : ''}`}
             data-tooltip="ENVELOPE"
             style={{
               padding: '8px 16px',
@@ -1115,7 +1143,7 @@ function AppContent() {
           {/* Effects - Dreamy Lavender Purple */}
           <button
             onClick={addChorusNode}
-            className={`floating-button ${flashingNodeType === 'effect' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
             data-tooltip="CHORUS"
             style={{
               padding: '8px 16px',
@@ -1134,7 +1162,7 @@ function AppContent() {
 
           <button
             onClick={addReverbNode}
-            className={`floating-button ${flashingNodeType === 'effect' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
             data-tooltip="REVERB"
             style={{
               padding: '8px 16px',
@@ -1153,7 +1181,7 @@ function AppContent() {
 
           <button
             onClick={addDelayNode}
-            className={`floating-button ${flashingNodeType === 'effect' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
             data-tooltip="DELAY"
             style={{
               padding: '8px 16px',
@@ -1172,7 +1200,7 @@ function AppContent() {
 
           <button
             onClick={addDistortionNode}
-            className={`floating-button ${flashingNodeType === 'effect' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
             data-tooltip="DISTORTION"
             style={{
               padding: '8px 16px',
@@ -1191,7 +1219,7 @@ function AppContent() {
 
           <button
             onClick={addPitchShifterNode}
-            className={`floating-button ${flashingNodeType === 'effect' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
             data-tooltip="PITCH SHIFTER"
             style={{
               padding: '8px 16px',
@@ -1210,7 +1238,7 @@ function AppContent() {
 
           <button
             onClick={addPhaserNode}
-            className={`floating-button ${flashingNodeType === 'effect' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
             data-tooltip="PHASER"
             style={{
               padding: '8px 16px',
@@ -1229,7 +1257,7 @@ function AppContent() {
 
           <button
             onClick={addVibratoNode}
-            className={`floating-button ${flashingNodeType === 'effect' ? 'flash-hint' : ''}`}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
             data-tooltip="VIBRATO"
             style={{
               padding: '8px 16px',
