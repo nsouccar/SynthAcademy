@@ -36,8 +36,12 @@ export function DistortionNode({ id, data }) {
   useEffect(() => {
     if (effectRef.current) {
       effectRef.current.distortion = distortion;
+      // Dispatch distortion change for background warping effect
+      window.dispatchEvent(new CustomEvent('distortionChange', {
+        detail: { nodeId: id, distortion: distortion }
+      }));
     }
-  }, [distortion]);
+  }, [distortion, id]);
 
   // Update oversample
   useEffect(() => {

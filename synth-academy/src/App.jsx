@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import ReactFlow, { addEdge, Background, Controls, applyNodeChanges, applyEdgeChanges } from 'reactflow';
-import { WaveformGraph2D } from './components/WaveformGraph2D';
+import ReactFlow, { addEdge, Background, Controls, applyNodeChanges, applyEdgeChanges, ReactFlowProvider } from 'reactflow';
 import { OscNode } from './components/OscNode';
 import { PulseOscNode } from './components/PulseOscNode';
 import { SineOscNode } from './components/SineOscNode';
@@ -24,8 +23,12 @@ import { VibratoNode } from './components/VibratoNode';
 import { PianoRollNode } from './components/PianoRollNode';
 import { InteractiveTutorial } from './components/InteractiveTutorial';
 import { SongBank } from './components/SongBank';
+import { FloatingBalloons } from './components/FloatingBalloons';
+import { SunRays } from './components/SunRays';
+import { AuroraLights } from './components/AuroraLights';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
+import * as Tone from 'tone';
 
 import 'reactflow/dist/style.css';
 
@@ -57,12 +60,128 @@ const nodeTypes = {
   vibratoNode: VibratoNode
 };
 
-export default function App() {
+function AppContent() {
   const [nodes, setNodes] = useState([]);
   const [edges, setEdges] = useState([]);
   const [showTutorial, setShowTutorial] = useState(false);
   const [selectedTutorialKey, setSelectedTutorialKey] = useState(null);
   const [tutorialLevel, setTutorialLevel] = useState(1);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [panX, setPanX] = useState(0);
+  const [panY, setPanY] = useState(0);
+  const [flashingNodeType, setFlashingNodeType] = useState(null);
+  const [flashingCategories, setFlashingCategories] = useState([]);
+  const [reverbAmount, setReverbAmount] = useState(0);
+  const [distortionAmount, setDistortionAmount] = useState(0);
+
+  // Check if there are any envelope nodes on the canvas
+  const hasEnvelopeNode = nodes.some(node => node.type === 'envelopeNode');
+
+  // Calculate reverb amount from all reverb nodes
+  useEffect(() => {
+    const reverbNodes = nodes.filter(node => node.type === 'reverbNode');
+    if (reverbNodes.length > 0) {
+      // Get the maximum wet value from all reverb nodes (0 to 1)
+      const maxWet = Math.max(...reverbNodes.map(node => node.data?.wet || 0));
+      setReverbAmount(maxWet);
+    } else {
+      setReverbAmount(0);
+    }
+  }, [nodes]);
+
+  // Calculate background blur based on reverb amount (0px to 20px)
+  const backgroundBlur = reverbAmount * 20;
+
+  // Calculate background distortion based on distortion amount
+  const backgroundDistortion = distortionAmount * 10; // 0 to 10px
+
+  // Listen for distortion changes
+  useEffect(() => {
+    const handleDistortionChange = (event) => {
+      setDistortionAmount(event.detail.distortion || 0);
+    };
+
+    window.addEventListener('distortionChange', handleDistortionChange);
+    return () => window.removeEventListener('distortionChange', handleDistortionChange);
+  }, []);
+
+  // Listen for tutorial flash category updates
+  useEffect(() => {
+    const handleFlashUpdate = () => {
+      setFlashingCategories(window.tutorialFlashCategories || []);
+    };
+
+    window.addEventListener('tutorialFlashUpdate', handleFlashUpdate);
+    return () => window.removeEventListener('tutorialFlashUpdate', handleFlashUpdate);
+  }, []);
+
+  // Listen for reverb wet parameter changes for background blur effect
+  useEffect(() => {
+    const handleReverbChange = (event) => {
+      // Update reverb amount immediately when wet parameter changes
+      const reverbNodes = nodes.filter(node => node.type === 'reverbNode');
+      if (reverbNodes.length > 0) {
+        const maxWet = Math.max(...reverbNodes.map(node =>
+          node.id === event.detail.nodeId ? event.detail.wet : (node.data?.wet || 0)
+        ));
+        setReverbAmount(maxWet);
+      }
+    };
+
+    window.addEventListener('reverbWetChange', handleReverbChange);
+    return () => window.removeEventListener('reverbWetChange', handleReverbChange);
+  }, [nodes]);
+
+  // Listen for tutorial hint events
+  useEffect(() => {
+    const handleTutorialHint = (event) => {
+      setFlashingNodeType(event.detail.nodeType);
+    };
+
+    const handleTutorialHintStop = () => {
+      setFlashingNodeType(null);
+    };
+
+    window.addEventListener('tutorialShowHint', handleTutorialHint);
+    window.addEventListener('tutorialHideHint', handleTutorialHintStop);
+
+    return () => {
+      window.removeEventListener('tutorialShowHint', handleTutorialHint);
+      window.removeEventListener('tutorialHideHint', handleTutorialHintStop);
+    };
+  }, []);
+
+  // Set up audio analyzer to track audio levels for star reactivity
+  useEffect(() => {
+    let rafId;
+    try {
+      const analyser = new Tone.Analyser('waveform', 256);
+      Tone.Destination.connect(analyser);
+
+      const updateAudioLevel = () => {
+        const waveform = analyser.getValue();
+        // Calculate RMS (root mean square) to get overall amplitude
+        let sum = 0;
+        for (let i = 0; i < waveform.length; i++) {
+          sum += waveform[i] * waveform[i];
+        }
+        const rms = Math.sqrt(sum / waveform.length);
+        // Amplify the signal for better visibility (adjust multiplier as needed)
+        const normalized = Math.min(1, rms * 3);
+        setAudioLevel(normalized);
+        rafId = requestAnimationFrame(updateAudioLevel);
+      };
+
+      updateAudioLevel();
+
+      return () => {
+        cancelAnimationFrame(rafId);
+        analyser.dispose();
+      };
+    } catch (error) {
+      console.error('Failed to set up audio analyzer:', error);
+    }
+  }, []);
 
   // Handle song selection from the song bank
   const handleSongSelect = useCallback((song, level) => {
@@ -74,6 +193,10 @@ export default function App() {
 
     const presetKey = songToPresetMap[song.id];
     if (presetKey) {
+      // Clear the canvas before starting tutorial
+      setNodes([]);
+      setEdges([]);
+
       setSelectedTutorialKey(presetKey);
       setTutorialLevel(level);
       setShowTutorial(true);
@@ -566,57 +689,357 @@ export default function App() {
   }, [nodes, edges]);
 
   return (
-    <div style={{ display: 'flex', height: '100vh', width: '100vw' }}>
-      {/* Sidebar with WaveformGraph2D */}
-      <WaveformGraph2D />
-
-      {/* React Flow Canvas */}
+    <div style={{ display: 'flex', height: '100vh', width: '100vw', background: '#87CEEB' }}>
+      {/* React Flow Canvas - Full width */}
       <div
-        style={{ flex: 1, background: '#111', position: 'relative' }}
+        style={{
+          flex: 1,
+          position: 'relative',
+          width: '100%',
+          overflow: 'hidden'
+        }}
         onDragOver={onDragOver}
         onDrop={onDrop}
       >
+        {/* Space Theme & Animation Styles */}
+        <style>{`
+          @font-face {
+            font-family: 'AudioNugget';
+            src: url('/AudioNugget.ttf') format('truetype');
+          }
+
+          @font-face {
+            font-family: 'Silvers';
+            src: url('/SILVERS PERSONAL USE.ttf') format('truetype');
+          }
+
+          @font-face {
+            font-family: 'ByteBounce';
+            src: url('/ByteBounce.ttf') format('truetype');
+          }
+
+          @font-face {
+            font-family: 'StarCrush';
+            src: url('/Star Crush.ttf') format('truetype');
+          }
+
+          @keyframes float3d {
+            0%, 100% {
+              transform: translateY(0px) translateZ(0px) rotateX(0deg) rotateY(0deg);
+            }
+            25% {
+              transform: translateY(-8px) translateZ(10px) rotateX(2deg) rotateY(-2deg);
+            }
+            50% {
+              transform: translateY(-4px) translateZ(5px) rotateX(-1deg) rotateY(1deg);
+            }
+            75% {
+              transform: translateY(-10px) translateZ(12px) rotateX(1deg) rotateY(2deg);
+            }
+          }
+
+          @keyframes glow {
+            0%, 100% {
+              text-shadow:
+                0 0 10px #00ffff,
+                0 0 20px #00ffff,
+                0 0 30px #00ffff,
+                0 0 40px #ff00ff,
+                0 0 70px #ff00ff,
+                0 0 80px #ff00ff;
+            }
+            50% {
+              text-shadow:
+                0 0 20px #00ffff,
+                0 0 30px #00ffff,
+                0 0 40px #00ffff,
+                0 0 50px #ff00ff,
+                0 0 80px #ff00ff,
+                0 0 100px #ff00ff;
+            }
+          }
+
+          .floating-button {
+            font-family: 'ByteBounce', sans-serif !important;
+            border: 3px solid black !important;
+            animation: float3d 4s ease-in-out infinite;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.1);
+            transform-style: preserve-3d;
+            transition: all 0.3s ease;
+            font-size: 16px !important;
+            letter-spacing: 1px;
+            padding: 8px 14px !important;
+            font-weight: bold !important;
+            position: relative;
+            cursor: pointer;
+          }
+
+          .floating-button::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: calc(100% + 25px);
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            background: linear-gradient(135deg, #ff69b4 0%, #ff1493 50%, #ff69b4 100%);
+            border: 6px solid black;
+            border-radius: 35px;
+            padding: 30px 45px;
+            color: white !important;
+            font-size: 48px !important;
+            font-weight: bold !important;
+            font-family: 'ByteBounce', sans-serif !important;
+            white-space: nowrap;
+            pointer-events: none;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 1000;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6),
+                        inset 0 3px 0 rgba(255, 255, 255, 0.4),
+                        0 0 30px rgba(255, 105, 180, 0.8);
+            text-shadow: 4px 4px 0 rgba(0, 0, 0, 0.4);
+            letter-spacing: 4px;
+            display: block;
+          }
+
+          .floating-button::before {
+            content: '';
+            position: absolute;
+            bottom: calc(100% + 5px);
+            left: 50%;
+            transform: translateX(-50%) scale(0);
+            width: 0;
+            height: 0;
+            border-left: 25px solid transparent;
+            border-right: 25px solid transparent;
+            border-top: 25px solid black;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 999;
+          }
+
+          .floating-button:hover::after {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+          }
+
+          .floating-button:hover::before {
+            transform: translateX(-50%) scale(1);
+            opacity: 1;
+          }
+
+          .floating-button:hover {
+            animation-play-state: paused;
+            transform: translateY(-6px) translateZ(20px) scale(1.05) !important;
+            box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.1) !important;
+          }
+
+          @keyframes flashWhite {
+            0%, 100% {
+              filter: brightness(1);
+              box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.1);
+              transform: scale(1);
+            }
+            50% {
+              filter: brightness(3) saturate(0);
+              box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 60px rgba(255, 255, 255, 1), 0 0 100px rgba(255, 255, 255, 0.8);
+              transform: scale(1.1);
+            }
+          }
+
+          .flash-hint {
+            animation: flashWhite 0.8s ease-in-out infinite !important;
+          }
+
+          .synthworld-title {
+            font-family: 'StarCrush', sans-serif;
+            font-size: 72px;
+            color: #4169E1;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+            letter-spacing: 8px;
+            text-transform: uppercase;
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 5;
+            pointer-events: none;
+            user-select: none;
+          }
+
+
+        `}</style>
+
+        {/* SVG Gradients for 3D Rope Effect */}
+        <svg width="0" height="0" style={{ position: 'absolute' }}>
+          <defs>
+            <linearGradient id="ropeGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style={{ stopColor: '#D2691E', stopOpacity: 1 }} />
+              <stop offset="40%" style={{ stopColor: '#8B4513', stopOpacity: 1 }} />
+              <stop offset="60%" style={{ stopColor: '#654321', stopOpacity: 1 }} />
+              <stop offset="100%" style={{ stopColor: '#4A3319', stopOpacity: 1 }} />
+            </linearGradient>
+            <linearGradient id="ropeGradientSelected" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" style={{ stopColor: '#FFD700', stopOpacity: 1 }} />
+              <stop offset="40%" style={{ stopColor: '#FFA500', stopOpacity: 1 }} />
+              <stop offset="60%" style={{ stopColor: '#FF8C00', stopOpacity: 1 }} />
+              <stop offset="100%" style={{ stopColor: '#FF6347', stopOpacity: 1 }} />
+            </linearGradient>
+          </defs>
+        </svg>
+
+        {/* Aurora Light Beams - Effect-reactive */}
+        <AuroraLights />
+
+        {/* Animated Sun with Oscillator-Reactive Rays */}
+        <SunRays audioLevel={audioLevel} />
+
+        {/* Floating 3D Balloons - only show when envelope node exists */}
+        {hasEnvelopeNode && <FloatingBalloons audioLevel={audioLevel} />}
+
+        {/* Infinite Tiling Sky Background - seamless repeating pattern */}
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            zIndex: 0,
+            overflow: 'hidden'
+          }}
+        >
+          {/* Single seamless background layer with parallax, reverb blur, and distortion warp */}
+          <div style={{
+            position: 'absolute',
+            top: '-50%',
+            left: '-50%',
+            width: '200%',
+            height: '200%',
+            backgroundImage: 'url(/bluesky-optimized.png)',
+            backgroundSize: '800px 400px',
+            backgroundRepeat: 'repeat',
+            backgroundPosition: `${panX * 0.2}px ${panY * 0.2}px`,
+            filter: `blur(${2 + backgroundBlur}px) url(#distortionFilter)`,
+            opacity: 0.95,
+            transition: 'filter 0.3s ease',
+            transform: backgroundDistortion > 0 ? `scale(${1 + backgroundDistortion * 0.02})` : 'none'
+          }} />
+        </div>
+
+        {/* Synthworld Title */}
+        <div className="synthworld-title">Synth-Chronicity</div>
+
         {/* Add node buttons */}
         <div style={{
           position: 'absolute',
-          top: 10,
-          left: 10,
+          top: 120,
+          left: 20,
+          right: 20,
           zIndex: 10,
           display: 'flex',
           gap: 8,
           flexWrap: 'wrap',
-          maxWidth: 'calc(100vw - 600px)' // Account for both left and right sidebars
+          justifyContent: 'space-between',
+          perspective: '1000px', // Enable 3D perspective for children
+          perspectiveOrigin: 'center center'
         }}>
-          {/* Oscillators */}
-          <button onClick={addSineOscNode} style={{ padding: '8px 16px', background: '#4a9eff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+          {/* Oscillators - Dreamy Sky Blue */}
+          <button
+            onClick={addSineOscNode}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
+            data-tooltip="SINE"
+            style={{
+              animationDelay: '0s',
+              '--original-bg': 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              background: 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              color: '#333'
+            }}
+          >
             Sine
           </button>
-          <button onClick={addSquareOscNode} style={{ padding: '8px 16px', background: '#ff4a4a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+          <button
+            onClick={addSquareOscNode}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
+            data-tooltip="SQUARE"
+            style={{
+              animationDelay: '0.2s',
+              '--original-bg': 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              background: 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              color: '#333'
+            }}
+          >
             Square
           </button>
-          <button onClick={addSawtoothOscNode} style={{ padding: '8px 16px', background: '#4aff4a', color: '#000', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+          <button
+            onClick={addSawtoothOscNode}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
+            data-tooltip="SAWTOOTH"
+            style={{
+              animationDelay: '0.4s',
+              '--original-bg': 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              background: 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              color: '#333'
+            }}
+          >
             Sawtooth
           </button>
-          <button onClick={addTriangleOscNode} style={{ padding: '8px 16px', background: '#ffff4a', color: '#000', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+          <button
+            onClick={addTriangleOscNode}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
+            data-tooltip="TRIANGLE"
+            style={{
+              animationDelay: '0.6s',
+              '--original-bg': 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              background: 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              color: '#333'
+            }}
+          >
             Triangle
           </button>
-          <button onClick={addPulseOscNode} style={{ padding: '8px 16px', background: '#ff9d4a', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+          <button
+            onClick={addPulseOscNode}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
+            data-tooltip="PULSE"
+            style={{
+              animationDelay: '0.8s',
+              '--original-bg': 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              background: 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              color: '#333'
+            }}
+          >
             Pulse
           </button>
-          <button onClick={addNoiseOscNode} style={{ padding: '8px 16px', background: '#ff4aff', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 'bold' }}>
+          <button
+            onClick={addNoiseOscNode}
+            className={`floating-button ${flashingNodeType === 'oscillator' || flashingCategories.includes('oscillators') ? 'flash-hint' : ''}`}
+            data-tooltip="NOISE"
+            style={{
+              animationDelay: '1.0s',
+              '--original-bg': 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              background: 'linear-gradient(135deg, #a8edea 0%, #89cff0 100%)',
+              color: '#333'
+            }}
+          >
             Noise
           </button>
 
+          {/* Utilities - Dreamy Mint Green */}
           <button
             onClick={addFilterNode}
+            className="floating-button"
+            data-tooltip="FILTER"
             style={{
               padding: '8px 16px',
-              background: '#f90',
-              color: '#000',
+              background: 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '1.2s',
+              '--original-bg': 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)'
             }}
           >
             + Add Filter
@@ -624,14 +1047,18 @@ export default function App() {
 
           <button
             onClick={addPianoNode}
+            className="floating-button"
+            data-tooltip="PIANO"
             style={{
               padding: '8px 16px',
-              background: '#0af',
-              color: '#000',
+              background: 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '1.4s',
+              '--original-bg': 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)'
             }}
           >
             + Add Piano
@@ -639,14 +1066,18 @@ export default function App() {
 
           <button
             onClick={addSequencerNode}
+            className="floating-button"
+            data-tooltip="SEQUENCER"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '1.6s',
+              '--original-bg': 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)'
             }}
           >
             + Add Sequencer
@@ -654,29 +1085,38 @@ export default function App() {
 
           <button
             onClick={addOutputNode}
+            className="floating-button"
+            data-tooltip="OUTPUT"
             style={{
               padding: '8px 16px',
-              background: '#f0f',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '1.8s',
+              '--original-bg': 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)'
             }}
           >
             + Add Output
           </button>
 
+          {/* Modulators - Dreamy Rose Pink */}
           <button
             onClick={addEnvelopeNode}
+            className={`floating-button ${flashingNodeType === 'envelopeNode' || flashingCategories.includes('envelope') ? 'flash-hint' : ''}`}
+            data-tooltip="ENVELOPE"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #ffd1dc 0%, #ffb6c1 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '2.0s',
+              '--original-bg': 'linear-gradient(135deg, #ffd1dc 0%, #ffb6c1 100%)'
             }}
           >
             + Add Envelope
@@ -684,29 +1124,37 @@ export default function App() {
 
           <button
             onClick={addLFONode}
+            className="floating-button"
+            data-tooltip="LFO"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #ffd1dc 0%, #ffb6c1 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '2.2s',
             }}
           >
             + Add LFO
           </button>
 
+          {/* Effects - Dreamy Lavender Purple */}
           <button
             onClick={addChorusNode}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
+            data-tooltip="CHORUS"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '2.4s',
+              '--original-bg': 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)'
             }}
           >
             + Chorus
@@ -714,14 +1162,18 @@ export default function App() {
 
           <button
             onClick={addReverbNode}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
+            data-tooltip="REVERB"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+              background: 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)',
               color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '2.6s',
+              '--original-bg': 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)'
             }}
           >
             + Reverb
@@ -729,14 +1181,18 @@ export default function App() {
 
           <button
             onClick={addDelayNode}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
+            data-tooltip="DELAY"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #ffecd2 0%, #fcb69f 100%)',
+              background: 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)',
               color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '2.8s',
+              '--original-bg': 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)'
             }}
           >
             + Delay
@@ -744,14 +1200,18 @@ export default function App() {
 
           <button
             onClick={addDistortionNode}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
+            data-tooltip="DISTORTION"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #ff512f 0%, #dd2476 100%)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '3.0s',
+              '--original-bg': 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)'
             }}
           >
             + Distortion
@@ -759,14 +1219,18 @@ export default function App() {
 
           <button
             onClick={addPitchShifterNode}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
+            data-tooltip="PITCH SHIFTER"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%)',
+              background: 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)',
               color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '3.2s',
+              '--original-bg': 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)'
             }}
           >
             + Pitch Shifter
@@ -774,14 +1238,18 @@ export default function App() {
 
           <button
             onClick={addPhaserNode}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
+            data-tooltip="PHASER"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%)',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '3.4s',
+              '--original-bg': 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)'
             }}
           >
             + Phaser
@@ -789,66 +1257,60 @@ export default function App() {
 
           <button
             onClick={addVibratoNode}
+            className={`floating-button ${flashingNodeType === 'effect' || flashingCategories.includes('effects') ? 'flash-hint' : ''}`}
+            data-tooltip="VIBRATO"
             style={{
               padding: '8px 16px',
-              background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+              background: 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)',
               color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '3.6s',
+              '--original-bg': 'linear-gradient(135deg, #d4a5f9 0%, #c7b3f5 100%)'
             }}
           >
             + Vibrato
           </button>
 
-          <button
-            onClick={createColorGroup}
-            style={{
-              padding: '8px 16px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-              color: '#fff',
-              border: '2px solid #fff',
-              borderRadius: 4,
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4
-            }}
-          >
-            Shape → Color
-          </button>
-
-          {/* Export/Import Buttons */}
+          {/* File Exchange - Dreamy Peach */}
           <button
             onClick={exportProject}
+            className="floating-button"
+            data-tooltip="EXPORT PATCH"
             style={{
               padding: '8px 16px',
-              background: '#FF9800',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #ffd89b 0%, #ffb88c 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '4.0s',
+              '--original-bg': 'linear-gradient(135deg, #ffd89b 0%, #ffb88c 100%)'
             }}
           >
-            ⬇️ Export Patch
+            Export Patch
           </button>
 
           <button
             onClick={importProject}
+            className="floating-button"
+            data-tooltip="IMPORT PATCH"
             style={{
               padding: '8px 16px',
-              background: '#9C27B0',
-              color: '#fff',
+              background: 'linear-gradient(135deg, #ffd89b 0%, #ffb88c 100%)',
+              color: '#333',
               border: 'none',
               borderRadius: 4,
               cursor: 'pointer',
               fontWeight: 'bold',
+              animationDelay: '4.2s',
+              '--original-bg': 'linear-gradient(135deg, #ffd89b 0%, #ffb88c 100%)'
             }}
           >
-            ⬆️ Import Patch
+            Import Patch
           </button>
         </div>
 
@@ -858,7 +1320,18 @@ export default function App() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onMove={(_, viewport) => {
+            setPanX(viewport.x);
+            setPanY(viewport.y);
+          }}
           nodeTypes={nodeTypes}
+          defaultEdgeOptions={{
+            style: {
+              strokeWidth: 8,
+              stroke: '#8B4513',
+            },
+            animated: false,
+          }}
           fitView
           zoomOnPinch={true}
         >
@@ -875,11 +1348,17 @@ export default function App() {
             setEdges={setEdges}
             onComplete={() => {
               alert('🎉 Tutorial Complete! You nailed it!');
+              // Clear the canvas after completing tutorial
+              setNodes([]);
+              setEdges([]);
               setShowTutorial(false);
               setSelectedTutorialKey(null);
               setTutorialLevel(1);
             }}
             onClose={() => {
+              // Clear the canvas when exiting tutorial
+              setNodes([]);
+              setEdges([]);
               setShowTutorial(false);
               setSelectedTutorialKey(null);
               setTutorialLevel(1);
@@ -891,5 +1370,14 @@ export default function App() {
       {/* Song Bank Sidebar */}
       <SongBank onSelectSong={handleSongSelect} />
     </div>
+  );
+}
+
+// Wrap AppContent with ReactFlowProvider to enable useReactFlow hook
+export default function App() {
+  return (
+    <ReactFlowProvider>
+      <AppContent />
+    </ReactFlowProvider>
   );
 }

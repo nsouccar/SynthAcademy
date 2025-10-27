@@ -114,6 +114,9 @@ class VoiceManager {
       startTime: Tone.now(),
     });
 
+    // Dispatch noteOn event for envelope animations
+    window.dispatchEvent(new Event('noteOn'));
+
     return voiceId;
   }
 
@@ -130,6 +133,9 @@ class VoiceManager {
     }
 
     console.log(`Stopping voice ${voiceId}`);
+
+    // Dispatch noteOff event for envelope animations
+    window.dispatchEvent(new Event('noteOff'));
 
     // Trigger release phase of envelopes BEFORE stopping
     voice.nodes.forEach(node => {

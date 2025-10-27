@@ -16,6 +16,8 @@ import { Handle, Position, useReactFlow } from 'reactflow';
 export function LFONode({ id, data }) {
   const { setNodes } = useReactFlow();
   const canvasRef = useRef(null);
+  const animationRef = useRef(null);
+  const phaseRef = useRef(0);
 
   // LFO parameters
   const [waveform, setWaveform] = useState(data?.waveform || 'sine');
@@ -44,7 +46,73 @@ export function LFONode({ id, data }) {
         return node;
       })
     );
+
+    // Dispatch LFO parameter change event for bird
+    window.dispatchEvent(new CustomEvent('lfoChange', {
+      detail: { nodeId: id, frequency, depth, waveform }
+    }));
   }, [waveform, frequency, depth, delay, smoothness, id, setNodes]);
+
+  // Generate real-time waveform values for bird animation
+  useEffect(() => {
+    let lastTime = Date.now();
+    let randomValue = 0;
+    let smoothedRandomValue = 0;
+
+    const generateWaveValue = () => {
+      const now = Date.now();
+      const deltaTime = (now - lastTime) / 1000; // Convert to seconds
+      lastTime = now;
+
+      // Advance phase based on frequency
+      phaseRef.current += frequency * deltaTime * Math.PI * 2;
+      if (phaseRef.current > Math.PI * 2) {
+        phaseRef.current -= Math.PI * 2;
+      }
+
+      let value = 0;
+      const phase = phaseRef.current;
+
+      switch (waveform) {
+        case 'sine':
+          value = Math.sin(phase);
+          break;
+        case 'triangle':
+          value = (2 / Math.PI) * Math.asin(Math.sin(phase));
+          break;
+        case 'square':
+          value = Math.sin(phase) >= 0 ? 1 : -1;
+          break;
+        case 'sawtooth':
+          value = ((phase % (Math.PI * 2)) / (Math.PI * 2)) * 2 - 1;
+          break;
+        case 'random':
+          // Generate new random value
+          randomValue = Math.random() * 2 - 1;
+          // Smooth it based on smoothness parameter
+          smoothedRandomValue = smoothedRandomValue * smoothness + randomValue * (1 - smoothness);
+          value = smoothedRandomValue;
+          break;
+        default:
+          value = 0;
+      }
+
+      // Dispatch waveform value event for bird
+      window.dispatchEvent(new CustomEvent('lfoWaveform', {
+        detail: { nodeId: id, value, frequency, depth, waveform }
+      }));
+
+      animationRef.current = requestAnimationFrame(generateWaveValue);
+    };
+
+    animationRef.current = requestAnimationFrame(generateWaveValue);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [frequency, waveform, depth, smoothness, id]);
 
   // Draw waveform visualization
   useEffect(() => {

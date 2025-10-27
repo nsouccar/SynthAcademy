@@ -65,6 +65,7 @@ const songs = {
 export function SongBank({ onSelectSong }) {
   const [expandedDifficulty, setExpandedDifficulty] = useState('easy');
   const [selectedSong, setSelectedSong] = useState(null);
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   const difficultyColors = {
     easy: { bg: '#4CAF50', hover: '#45a049' },
@@ -74,7 +75,15 @@ export function SongBank({ onSelectSong }) {
 
   return (
     <>
-      {/* Level Selection Modal */}
+      {/* StarCrush Font */}
+      <style>{`
+        @font-face {
+          font-family: 'StarCrush';
+          src: url('/Star Crush.ttf') format('truetype');
+        }
+      `}</style>
+
+      {/* Level Selection Modal - Y2K iPod Style */}
       {selectedSong && (
         <div style={{
           position: 'fixed',
@@ -82,47 +91,55 @@ export function SongBank({ onSelectSong }) {
           left: 0,
           width: '100vw',
           height: '100vh',
-          background: 'rgba(0,0,0,0.8)',
+          background: 'rgba(0,0,0,0.7)',
           zIndex: 2000,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center'
         }}>
           <div style={{
-            background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
+            background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
             borderRadius: 16,
-            padding: 32,
+            padding: 40,
             maxWidth: 500,
-            border: '2px solid #4CAF50',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.8)'
+            border: '3px solid #b0b0b0',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.8)'
           }}>
             <h2 style={{
               margin: '0 0 8px 0',
-              color: '#fff',
-              fontSize: '24px',
-              textAlign: 'center'
+              color: '#333',
+              fontSize: '32px',
+              textAlign: 'center',
+              fontFamily: 'StarCrush, sans-serif',
+              textShadow: '0 1px 0 rgba(255,255,255,0.8)',
+              letterSpacing: '2px'
             }}>
               {selectedSong.title}
             </h2>
             <p style={{
-              margin: '0 0 24px 0',
-              color: '#aaa',
+              margin: '0 0 32px 0',
+              color: '#666',
               fontSize: '14px',
-              textAlign: 'center'
+              textAlign: 'center',
+              fontFamily: 'Arial, sans-serif',
+              textShadow: '0 1px 0 rgba(255,255,255,0.6)'
             }}>
               by {selectedSong.artist}
             </p>
 
             <p style={{
               margin: '0 0 24px 0',
-              color: '#ddd',
-              fontSize: '14px',
-              textAlign: 'center'
+              color: '#444',
+              fontSize: '16px',
+              textAlign: 'center',
+              fontFamily: 'StarCrush, sans-serif',
+              textShadow: '0 1px 0 rgba(255,255,255,0.8)',
+              letterSpacing: '1px'
             }}>
-              Choose your learning level:
+              Choose Mode:
             </p>
 
-            {/* Level 1 Button */}
+            {/* Easy Button */}
             <button
               onClick={() => {
                 onSelectSong(selectedSong, 1);
@@ -131,26 +148,35 @@ export function SongBank({ onSelectSong }) {
               style={{
                 width: '100%',
                 padding: '16px 24px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: '#fff',
-                border: 'none',
+                background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
+                color: '#333',
+                border: '2px solid #b0b0b0',
                 borderRadius: 8,
                 cursor: 'pointer',
                 fontWeight: 'bold',
-                fontSize: '16px',
+                fontSize: '18px',
                 marginBottom: 12,
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                fontFamily: 'StarCrush, sans-serif',
+                letterSpacing: '1px',
+                textShadow: '0 1px 0 rgba(255,255,255,0.8)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)'
               }}
-              onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-              onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(180deg, #4a9eff 0%, #2d7fd9 100%)';
+                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)';
+                e.currentTarget.style.color = '#333';
+                e.currentTarget.style.textShadow = '0 1px 0 rgba(255,255,255,0.8)';
+              }}
             >
-              <div style={{ marginBottom: 4 }}>🎓 Level 1: Guided Tutorial</div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                Step-by-step guide to building the synth
-              </div>
+              Easy
             </button>
 
-            {/* Level 2 Button */}
+            {/* Hard Button */}
             <button
               onClick={() => {
                 onSelectSong(selectedSong, 2);
@@ -159,23 +185,32 @@ export function SongBank({ onSelectSong }) {
               style={{
                 width: '100%',
                 padding: '16px 24px',
-                background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                color: '#fff',
-                border: 'none',
+                background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
+                color: '#333',
+                border: '2px solid #b0b0b0',
                 borderRadius: 8,
                 cursor: 'pointer',
                 fontWeight: 'bold',
-                fontSize: '16px',
+                fontSize: '18px',
                 marginBottom: 12,
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                fontFamily: 'StarCrush, sans-serif',
+                letterSpacing: '1px',
+                textShadow: '0 1px 0 rgba(255,255,255,0.8)',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)'
               }}
-              onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
-              onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(180deg, #4a9eff 0%, #2d7fd9 100%)';
+                e.currentTarget.style.color = '#fff';
+                e.currentTarget.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)';
+                e.currentTarget.style.color = '#333';
+                e.currentTarget.style.textShadow = '0 1px 0 rgba(255,255,255,0.8)';
+              }}
             >
-              <div style={{ marginBottom: 4 }}>🎯 Level 2: Challenge Mode</div>
-              <div style={{ fontSize: '12px', opacity: 0.9 }}>
-                Connect & tune pre-placed nodes yourself
-              </div>
+              Hard
             </button>
 
             {/* Cancel Button */}
@@ -184,16 +219,23 @@ export function SongBank({ onSelectSong }) {
               style={{
                 width: '100%',
                 padding: '12px 24px',
-                background: 'transparent',
-                color: '#aaa',
-                border: '1px solid #666',
+                background: 'linear-gradient(180deg, #f0f0f0 0%, #d8d8d8 100%)',
+                color: '#666',
+                border: '2px solid #b0b0b0',
                 borderRadius: 8,
                 cursor: 'pointer',
                 fontSize: '14px',
-                transition: 'all 0.2s'
+                transition: 'all 0.2s',
+                fontFamily: 'Arial, sans-serif',
+                textShadow: '0 1px 0 rgba(255,255,255,0.6)',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.6)'
               }}
-              onMouseOver={(e) => e.target.style.borderColor = '#fff'}
-              onMouseOut={(e) => e.target.style.borderColor = '#666'}
+              onMouseOver={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(180deg, #e0e0e0 0%, #c8c8c8 100%)';
+              }}
+              onMouseOut={(e) => {
+                e.currentTarget.style.background = 'linear-gradient(180deg, #f0f0f0 0%, #d8d8d8 100%)';
+              }}
             >
               Cancel
             </button>
@@ -201,78 +243,159 @@ export function SongBank({ onSelectSong }) {
         </div>
       )}
 
+      {/* Collapse/Expand Tab - iPod Chrome Style */}
+      <button
+        onClick={() => setIsCollapsed(!isCollapsed)}
+        style={{
+          position: 'fixed',
+          right: isCollapsed ? 0 : '320px',
+          top: '50%',
+          transform: 'translateY(-50%)',
+          width: '50px',
+          height: '120px',
+          background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
+          border: '2px solid #b0b0b0',
+          borderRight: isCollapsed ? 'none' : '2px solid #b0b0b0',
+          borderLeft: isCollapsed ? '2px solid #b0b0b0' : 'none',
+          borderRadius: isCollapsed ? '8px 0 0 8px' : '0 8px 8px 0',
+          cursor: 'pointer',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: '8px',
+          fontSize: '16px',
+          color: '#333',
+          zIndex: 1001,
+          transition: 'all 0.3s ease-in-out',
+          boxShadow: isCollapsed
+            ? '-4px 0 12px rgba(0,0,0,0.3), inset 1px 0 0 rgba(255,255,255,0.8)'
+            : '4px 0 12px rgba(0,0,0,0.3), inset -1px 0 0 rgba(255,255,255,0.8)',
+          fontFamily: 'Arial, sans-serif',
+          fontWeight: 'bold',
+          letterSpacing: '0.5px',
+          textShadow: '0 1px 0 rgba(255,255,255,0.8)',
+          padding: '10px 8px'
+        }}
+        onMouseOver={(e) => {
+          e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #f0f0f0 50%, #e0e0e0 100%)';
+        }}
+        onMouseOut={(e) => {
+          e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)';
+        }}
+      >
+        <span style={{ fontSize: '18px' }}>{isCollapsed ? '◀' : '▶'}</span>
+        <div style={{
+          fontSize: '9px',
+          textAlign: 'center',
+          lineHeight: '1.2',
+          writingMode: 'vertical-rl',
+          textOrientation: 'mixed',
+          transform: 'rotate(180deg)'
+        }}>
+          SONG BANK
+        </div>
+      </button>
+
       {/* Song Bank Sidebar */}
       <div style={{
         position: 'fixed',
         top: 0,
-        right: 0,
-        width: '300px',
+        right: isCollapsed ? '-320px' : 0,
+        width: '320px',
         height: '100vh',
-        background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
-        borderLeft: '2px solid #4CAF50',
-        boxShadow: '-4px 0 12px rgba(0,0,0,0.3)',
+        background: 'linear-gradient(180deg, #f5f5f5 0%, #e0e0e0 50%, #d0d0d0 100%)',
+        borderLeft: '3px solid #c0c0c0',
+        boxShadow: '-8px 0 24px rgba(0,0,0,0.4), inset 2px 0 4px rgba(255,255,255,0.6)',
         zIndex: 1000,
         overflow: 'hidden',
         display: 'flex',
-        flexDirection: 'column'
+        flexDirection: 'column',
+        transition: 'right 0.3s ease-in-out',
+        borderRadius: '12px 0 0 12px'
       }}>
-      {/* Header */}
+      {/* Header - iPod Chrome Style */}
       <div style={{
-        padding: '20px',
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-        borderBottom: '2px solid #4CAF50'
+        padding: '24px 20px',
+        background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d0d0d0 100%)',
+        borderBottom: '2px solid #a0a0a0',
+        boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)'
       }}>
         <h2 style={{
           margin: 0,
-          color: '#fff',
-          fontSize: '20px',
+          color: '#333',
+          fontSize: '22px',
           fontWeight: 'bold',
-          textAlign: 'center'
+          textAlign: 'center',
+          textShadow: '0 1px 0 rgba(255,255,255,0.8)',
+          letterSpacing: '0.5px',
+          fontFamily: 'Arial, sans-serif'
         }}>
-          🎵 Song Bank
+          🎵 SONG BANK
         </h2>
         <p style={{
           margin: '8px 0 0 0',
-          color: '#ddd',
-          fontSize: '12px',
-          textAlign: 'center'
+          color: '#666',
+          fontSize: '11px',
+          textAlign: 'center',
+          textShadow: '0 1px 0 rgba(255,255,255,0.6)',
+          fontFamily: 'Arial, sans-serif'
         }}>
-          Learn to recreate classic synth sounds
+          Classic Synth Tutorials
         </p>
       </div>
 
-      {/* Song List */}
+      {/* Song List - iPod Playlist Style */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '16px'
+        padding: '12px',
+        background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)'
       }}>
         {Object.entries(songs).map(([difficulty, songList]) => (
           <div key={difficulty} style={{ marginBottom: '16px' }}>
-            {/* Difficulty Header */}
+            {/* Difficulty Header - iPod Button Style */}
             <button
               onClick={() => setExpandedDifficulty(expandedDifficulty === difficulty ? null : difficulty)}
               style={{
                 width: '100%',
-                padding: '12px 16px',
-                background: difficultyColors[difficulty].bg,
-                color: '#fff',
-                border: 'none',
-                borderRadius: 8,
+                padding: '10px 14px',
+                background: expandedDifficulty === difficulty
+                  ? 'linear-gradient(180deg, #4a9eff 0%, #2d7fd9 100%)'
+                  : 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
+                color: expandedDifficulty === difficulty ? '#fff' : '#333',
+                border: '1px solid #b0b0b0',
+                borderRadius: 6,
                 cursor: 'pointer',
                 fontWeight: 'bold',
-                fontSize: '14px',
+                fontSize: '12px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: expandedDifficulty === difficulty ? 8 : 0,
-                transition: 'all 0.2s'
+                marginBottom: expandedDifficulty === difficulty ? 6 : 0,
+                transition: 'all 0.2s',
+                boxShadow: expandedDifficulty === difficulty
+                  ? 'inset 0 2px 4px rgba(0,0,0,0.3)'
+                  : '0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)',
+                textShadow: expandedDifficulty === difficulty
+                  ? '0 1px 1px rgba(0,0,0,0.3)'
+                  : '0 1px 0 rgba(255,255,255,0.8)',
+                fontFamily: 'Arial, sans-serif',
+                letterSpacing: '0.3px'
               }}
-              onMouseOver={(e) => e.target.style.background = difficultyColors[difficulty].hover}
-              onMouseOut={(e) => e.target.style.background = difficultyColors[difficulty].bg}
+              onMouseOver={(e) => {
+                if (expandedDifficulty !== difficulty) {
+                  e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #f0f0f0 50%, #e0e0e0 100%)';
+                }
+              }}
+              onMouseOut={(e) => {
+                if (expandedDifficulty !== difficulty) {
+                  e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)';
+                }
+              }}
             >
               <span>{difficulty.toUpperCase()} ({songList.length})</span>
-              <span>{expandedDifficulty === difficulty ? '▼' : '▶'}</span>
+              <span style={{ fontSize: '10px' }}>{expandedDifficulty === difficulty ? '▼' : '▶'}</span>
             </button>
 
             {/* Song List */}
@@ -288,35 +411,44 @@ export function SongBank({ onSelectSong }) {
                     onClick={() => song.available && setSelectedSong(song)}
                     disabled={!song.available}
                     style={{
-                      padding: '10px 12px',
-                      background: song.available ? '#2a2a3e' : '#1a1a2e',
-                      color: song.available ? '#fff' : '#666',
-                      border: song.available ? '1px solid #4CAF50' : '1px solid #333',
-                      borderRadius: 6,
+                      padding: '8px 10px',
+                      background: song.available
+                        ? 'linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%)'
+                        : 'linear-gradient(180deg, #e8e8e8 0%, #d8d8d8 100%)',
+                      color: song.available ? '#000' : '#999',
+                      border: '1px solid #c0c0c0',
+                      borderBottom: '1px solid #a0a0a0',
+                      borderRadius: 0,
                       cursor: song.available ? 'pointer' : 'not-allowed',
                       textAlign: 'left',
-                      fontSize: '12px',
-                      opacity: song.available ? 1 : 0.5,
-                      transition: 'all 0.2s'
+                      fontSize: '11px',
+                      opacity: song.available ? 1 : 0.6,
+                      transition: 'all 0.15s',
+                      boxShadow: song.available
+                        ? 'inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 1px rgba(0,0,0,0.1)'
+                        : 'inset 0 1px 0 rgba(255,255,255,0.5)',
+                      fontFamily: 'Arial, sans-serif',
+                      textShadow: song.available ? '0 1px 0 rgba(255,255,255,0.8)' : 'none'
                     }}
                     onMouseOver={(e) => {
                       if (song.available) {
-                        e.target.style.background = '#3a3a4e';
-                        e.target.style.borderColor = '#4CAF50';
-                        e.target.style.transform = 'translateX(4px)';
+                        e.currentTarget.style.background = 'linear-gradient(180deg, #4a9eff 0%, #2d7fd9 100%)';
+                        e.currentTarget.style.color = '#fff';
+                        e.currentTarget.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
                       }
                     }}
                     onMouseOut={(e) => {
                       if (song.available) {
-                        e.target.style.background = '#2a2a3e';
-                        e.target.style.transform = 'translateX(0)';
+                        e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%)';
+                        e.currentTarget.style.color = '#000';
+                        e.currentTarget.style.textShadow = '0 1px 0 rgba(255,255,255,0.8)';
                       }
                     }}
                   >
-                    <div style={{ fontWeight: 'bold', marginBottom: 2 }}>
-                      {song.available ? '🎓 ' : '🔒 '}{song.title}
+                    <div style={{ fontWeight: 'bold', marginBottom: 3, fontSize: '11px' }}>
+                      {song.available ? '▶ ' : '🔒 '}{song.title}
                     </div>
-                    <div style={{ fontSize: '10px', opacity: 0.8 }}>
+                    <div style={{ fontSize: '10px', opacity: 0.7 }}>
                       {song.artist}
                     </div>
                   </button>
