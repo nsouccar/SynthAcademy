@@ -26,6 +26,7 @@ import { SongBank } from './components/SongBank';
 import { FloatingBalloons } from './components/FloatingBalloons';
 import { SunRays } from './components/SunRays';
 import { AuroraLights } from './components/AuroraLights';
+import { OnboardingTutorial, OnboardingInfoButton } from './components/OnboardingTutorial';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 import * as Tone from 'tone';
@@ -73,9 +74,18 @@ function AppContent() {
   const [flashingCategories, setFlashingCategories] = useState([]);
   const [reverbAmount, setReverbAmount] = useState(0);
   const [distortionAmount, setDistortionAmount] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   // Check if there are any envelope nodes on the canvas
   const hasEnvelopeNode = nodes.some(node => node.type === 'envelopeNode');
+
+  // Check if user has seen onboarding tutorial
+  useEffect(() => {
+    const hasSeenOnboarding = localStorage.getItem('hasSeenOnboarding');
+    if (!hasSeenOnboarding) {
+      setShowOnboarding(true);
+    }
+  }, []);
 
   // Calculate reverb amount from all reverb nodes
   useEffect(() => {
@@ -1370,6 +1380,23 @@ function AppContent() {
 
       {/* Song Bank Sidebar */}
       <SongBank onSelectSong={handleSongSelect} />
+
+      {/* Onboarding Tutorial */}
+      {showOnboarding && (
+        <OnboardingTutorial
+          onComplete={() => {
+            localStorage.setItem('hasSeenOnboarding', 'true');
+            setShowOnboarding(false);
+          }}
+          onSkip={() => {
+            localStorage.setItem('hasSeenOnboarding', 'true');
+            setShowOnboarding(false);
+          }}
+        />
+      )}
+
+      {/* Info Button - Show tutorial again */}
+      <OnboardingInfoButton onClick={() => setShowOnboarding(true)} />
     </div>
   );
 }
