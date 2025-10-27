@@ -1342,6 +1342,7 @@ function AppContent() {
         {/* Interactive Tutorial Overlay */}
         {showTutorial && selectedTutorialKey && (
           <InteractiveTutorial
+            key={`${selectedTutorialKey}-${tutorialLevel}`}
             presetKey={selectedTutorialKey}
             level={tutorialLevel}
             setNodes={setNodes}
