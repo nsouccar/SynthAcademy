@@ -21,6 +21,28 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
       flashButtons: ['SINE', 'SQUARE', 'SAWTOOTH', 'TRIANGLE', 'PULSE', 'NOISE']
     },
     {
+      id: 'drag-node',
+      title: 'Move Your Node Around',
+      description: 'Click and drag the oscillator node to move it around the canvas!',
+      targetSelector: '.react-flow__node',
+      position: 'center',
+      flashNode: 'oscillator'
+    },
+    {
+      id: 'pan-canvas',
+      title: 'Pan the Canvas',
+      description: 'Click and drag on the empty canvas area (not on a node) to pan around and explore your workspace!',
+      targetSelector: '.react-flow',
+      position: 'center'
+    },
+    {
+      id: 'zoom',
+      title: 'Zoom In and Out',
+      description: 'Use your mouse wheel or trackpad to zoom in and out. Try it now!',
+      targetSelector: '.react-flow',
+      position: 'center'
+    },
+    {
       id: 'output',
       title: 'Add an Output',
       description: 'Now add an Output node so you can hear the sound!',
@@ -115,6 +137,77 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
       targetSelector: '.react-flow__node-lfoNode',
       position: 'center',
       flashLFO: true
+    },
+    {
+      id: 'filter-add',
+      title: 'Add a Filter to Shape the Brightness',
+      description: 'A filter controls the brightness of your sound! Click the Filter button to add one.',
+      targetSelector: '.floating-button[data-tooltip="FILTER"]',
+      position: 'right',
+      flashButtons: ['FILTER']
+    },
+    {
+      id: 'reconnect-with-filter',
+      title: 'Rewire Your Effects Chain',
+      description: 'Delete the wire between Envelope and Output. Then connect: Envelope → Filter → Output. This puts the filter in your signal path!',
+      targetSelector: '.react-flow__edge',
+      position: 'center',
+      flashEdge: true
+    },
+    {
+      id: 'filter-params',
+      title: 'Shape the Brightness!',
+      description: 'Play with the Filter parameters while playing notes on the Piano to hear how it changes the sound!',
+      targetSelector: '.react-flow__node-filterNode',
+      position: 'center',
+      flashFilter: true
+    },
+    {
+      id: 'effect-add',
+      title: 'Try Adding an Effect!',
+      description: 'Effects like Reverb, Delay, and Chorus add space and depth to your sound. Choose any effect to add it!',
+      targetSelector: '.floating-button[data-tooltip="REVERB"]',
+      position: 'right',
+      flashButtons: ['REVERB', 'DELAY', 'CHORUS', 'DISTORTION', 'PHASER', 'VIBRATO'],
+      highlightEffects: true
+    },
+    {
+      id: 'effect-chain',
+      title: 'Add the Effect to Your Chain',
+      description: 'Connect your new effect between the Filter and Output: Filter → Effect → Output. Experiment with the effect parameters!',
+      targetSelector: '.react-flow__node',
+      position: 'center'
+    },
+    {
+      id: 'tv-add',
+      title: 'Visualize Your Sound!',
+      description: 'Add a TV Monitor to see the waveform at any point in your chain!',
+      targetSelector: '.floating-button[data-tooltip="TV"]',
+      position: 'right',
+      flashButtons: ['TV']
+    },
+    {
+      id: 'tv-chain',
+      title: 'See the Waveform!',
+      description: 'Place the TV anywhere in your effects chain to see what the audio looks like at that point. Example: Effect → TV → Output shows the final waveform being outputted!',
+      targetSelector: '.react-flow__node',
+      position: 'center',
+      highlightTV: true
+    },
+    {
+      id: 'delete-node',
+      title: 'Deleting Nodes',
+      description: 'You can delete any node by clicking on it and pressing the Delete or Backspace key. Try it out!',
+      targetSelector: '.react-flow__node',
+      position: 'center'
+    },
+    {
+      id: 'tutorial-complete',
+      title: 'You Did It!',
+      description: 'Now you know the basics! Exit to make weird sounds and experiment, or click the Song Bank tab to learn how to recreate professional synths from your favorite songs!',
+      targetSelector: null,
+      position: 'center',
+      highlightSongBank: true
     }
   ];
 
@@ -127,6 +220,13 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
     } else {
       // Tutorial complete
       handleComplete();
+    }
+  };
+
+  // Handle back step
+  const handleBack = () => {
+    if (currentStep > 0) {
+      setCurrentStep(currentStep - 1);
     }
   };
 
@@ -278,35 +378,131 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
     };
   }, [currentStepData]);
 
-  // Flash envelope node
+  // Flash envelope parameters (sliders)
   useEffect(() => {
     if (!currentStepData?.flashEnvelope) return;
 
     const envelopeNode = document.querySelector('.react-flow__node-envelopeNode');
-    if (envelopeNode) {
-      envelopeNode.classList.add('onboarding-flash');
-    }
+    if (!envelopeNode) return;
+
+    // Target the parameter slider controls within the envelope node
+    const parameterControls = envelopeNode.querySelectorAll('.nodrag.nopan');
+    parameterControls.forEach(control => {
+      control.classList.add('onboarding-flash-envelope-param');
+    });
 
     return () => {
-      if (envelopeNode) {
-        envelopeNode.classList.remove('onboarding-flash');
-      }
+      parameterControls.forEach(control => {
+        control.classList.remove('onboarding-flash-envelope-param');
+      });
     };
   }, [currentStepData]);
 
-  // Flash LFO node
+  // Flash LFO parameters (sliders and dropdown)
   useEffect(() => {
     if (!currentStepData?.flashLFO) return;
 
     const lfoNode = document.querySelector('.react-flow__node-lfoNode');
-    if (lfoNode) {
-      lfoNode.classList.add('onboarding-flash');
+    if (!lfoNode) return;
+
+    // Target the parameter controls within the LFO node
+    const parameterControls = lfoNode.querySelectorAll('.nodrag.nopan');
+    parameterControls.forEach(control => {
+      control.classList.add('onboarding-flash-lfo-param');
+    });
+
+    return () => {
+      parameterControls.forEach(control => {
+        control.classList.remove('onboarding-flash-lfo-param');
+      });
+    };
+  }, [currentStepData]);
+
+  // Highlight oscillator node for drag tutorial
+  useEffect(() => {
+    if (!currentStepData?.flashNode) return;
+
+    if (currentStepData.flashNode === 'oscillator') {
+      const oscillatorNodes = document.querySelectorAll('[class*="OscNode"]');
+      oscillatorNodes.forEach(node => {
+        node.classList.add('onboarding-highlight-node');
+      });
+
+      return () => {
+        oscillatorNodes.forEach(node => {
+          node.classList.remove('onboarding-highlight-node');
+        });
+      };
+    }
+  }, [currentStepData]);
+
+  // Flash filter parameters (sliders and dropdown)
+  useEffect(() => {
+    if (!currentStepData?.flashFilter) return;
+
+    const filterNode = document.querySelector('.react-flow__node-filterNode');
+    if (!filterNode) return;
+
+    // Target the parameter controls within the filter node
+    const parameterControls = filterNode.querySelectorAll('.nodrag.nopan');
+    parameterControls.forEach(control => {
+      control.classList.add('onboarding-flash-filter-param');
+    });
+
+    return () => {
+      parameterControls.forEach(control => {
+        control.classList.remove('onboarding-flash-filter-param');
+      });
+    };
+  }, [currentStepData]);
+
+  // Highlight Song Bank tab
+  useEffect(() => {
+    if (!currentStepData?.highlightSongBank) return;
+
+    // Target the song bank collapse/expand button by finding button with "SONG BANK" text
+    const buttons = Array.from(document.querySelectorAll('button'));
+    const songBankButton = buttons.find(btn => btn.textContent.includes('SONG BANK'));
+
+    if (songBankButton) {
+      songBankButton.classList.add('onboarding-highlight-song-bank');
     }
 
     return () => {
-      if (lfoNode) {
-        lfoNode.classList.remove('onboarding-flash');
+      if (songBankButton) {
+        songBankButton.classList.remove('onboarding-highlight-song-bank');
       }
+    };
+  }, [currentStepData]);
+
+  // Highlight all effects buttons
+  useEffect(() => {
+    if (!currentStepData?.highlightEffects) return;
+
+    const effectButtons = ['REVERB', 'DELAY', 'CHORUS', 'DISTORTION', 'PHASER', 'VIBRATO'].map(tooltip =>
+      document.querySelector(`.floating-button[data-tooltip="${tooltip}"]`)
+    ).filter(Boolean);
+
+    effectButtons.forEach(btn => btn?.classList.add('onboarding-highlight-effects'));
+
+    return () => {
+      effectButtons.forEach(btn => btn?.classList.remove('onboarding-highlight-effects'));
+    };
+  }, [currentStepData]);
+
+  // Highlight TV node
+  useEffect(() => {
+    if (!currentStepData?.highlightTV) return;
+
+    const tvNodes = document.querySelectorAll('.react-flow__node-tvNode');
+    tvNodes.forEach(node => {
+      node.classList.add('onboarding-highlight-node');
+    });
+
+    return () => {
+      tvNodes.forEach(node => {
+        node.classList.remove('onboarding-highlight-node');
+      });
     };
   }, [currentStepData]);
 
@@ -375,20 +571,22 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
           {/* Buttons */}
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'space-between' }}>
             <button
-              onClick={handleSkip}
+              onClick={handleBack}
+              disabled={currentStep === 0}
               style={{
                 padding: '10px 20px',
-                background: 'transparent',
+                background: currentStep === 0 ? '#ccc' : 'transparent',
                 border: '2px solid #999',
                 borderRadius: '8px',
-                color: '#666',
-                cursor: 'pointer',
+                color: currentStep === 0 ? '#999' : '#666',
+                cursor: currentStep === 0 ? 'not-allowed' : 'pointer',
                 fontFamily: 'Arial, sans-serif',
                 fontWeight: 'bold',
-                fontSize: '14px'
+                fontSize: '14px',
+                opacity: currentStep === 0 ? 0.5 : 1
               }}
             >
-              Skip
+              ← Back
             </button>
             <button
               onClick={handleNext}
@@ -408,33 +606,42 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
               {currentStep < steps.length - 1 ? 'Next' : 'Got it!'}
             </button>
           </div>
-        </div>
 
-      {/* Animated arrow pointing to target */}
-      {targetPos && currentStepData.position === 'right' && (
-        <div
-          style={{
-            position: 'fixed',
-            top: targetPos.top + targetPos.height / 2 - 20,
-            left: targetPos.right + 20,
-            width: '40px',
-            height: '40px',
-            zIndex: 10000,
-            animation: 'bounce-horizontal 1.5s ease-in-out infinite'
-          }}
-        >
-          <svg width="40" height="40" viewBox="0 0 40 40">
-            <path
-              d="M 5 20 L 25 20 L 20 15 M 25 20 L 20 25"
-              stroke="#4CAF50"
-              strokeWidth="3"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fill="none"
-            />
-          </svg>
+          {/* X Close Button - Top Right of Dialog */}
+          <button
+            onClick={handleSkip}
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              width: '32px',
+              height: '32px',
+              background: 'transparent',
+              border: '2px solid #999',
+              borderRadius: '50%',
+              color: '#666',
+              cursor: 'pointer',
+              fontSize: '18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontWeight: 'bold',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#f44336';
+              e.currentTarget.style.borderColor = '#f44336';
+              e.currentTarget.style.color = '#fff';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = '#999';
+              e.currentTarget.style.color = '#666';
+            }}
+          >
+            ✕
+          </button>
         </div>
-      )}
 
       {/* Animations */}
       <style>{`
@@ -500,13 +707,90 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
           }
         }
 
-        @keyframes bounce-horizontal {
+        @keyframes onboarding-flash-lfo-param-animation {
           0%, 100% {
-            transform: translateX(0);
+            box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.7);
+            transform: scale(1);
           }
           50% {
-            transform: translateX(10px);
+            box-shadow: 0 0 15px 8px rgba(245, 87, 108, 0.4);
+            transform: scale(1.02);
           }
+        }
+
+        .onboarding-flash-lfo-param {
+          animation: onboarding-flash-lfo-param-animation 1.5s ease-in-out infinite !important;
+          border-radius: 4px !important;
+        }
+
+        @keyframes onboarding-flash-envelope-param-animation {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(245, 87, 108, 0.7);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 15px 8px rgba(245, 87, 108, 0.4);
+            transform: scale(1.02);
+          }
+        }
+
+        .onboarding-flash-envelope-param {
+          animation: onboarding-flash-envelope-param-animation 1.5s ease-in-out infinite !important;
+          border-radius: 4px !important;
+        }
+
+        .onboarding-highlight-node {
+          border: 3px solid #4CAF50 !important;
+          box-shadow: 0 0 20px rgba(76, 175, 80, 0.6) !important;
+          transition: all 0.3s ease !important;
+        }
+
+        @keyframes onboarding-flash-filter-param-animation {
+          0%, 100% {
+            box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 15px 8px rgba(76, 175, 80, 0.4);
+            transform: scale(1.02);
+          }
+        }
+
+        .onboarding-flash-filter-param {
+          animation: onboarding-flash-filter-param-animation 1.5s ease-in-out infinite !important;
+          border-radius: 4px !important;
+        }
+
+        @keyframes onboarding-highlight-song-bank-animation {
+          0%, 100% {
+            box-shadow: 0 0 20px 5px rgba(76, 175, 80, 0.8);
+            border-color: #4CAF50;
+          }
+          50% {
+            box-shadow: 0 0 30px 10px rgba(76, 175, 80, 0.6);
+            border-color: #66BB6A;
+          }
+        }
+
+        .onboarding-highlight-song-bank {
+          animation: onboarding-highlight-song-bank-animation 1.5s ease-in-out infinite !important;
+          z-index: 10001 !important;
+        }
+
+        @keyframes onboarding-highlight-effects-animation {
+          0%, 100% {
+            box-shadow: 0 0 20px 5px rgba(76, 175, 80, 0.8);
+            transform: scale(1);
+          }
+          50% {
+            box-shadow: 0 0 30px 10px rgba(76, 175, 80, 0.6);
+            transform: scale(1.05);
+          }
+        }
+
+        .onboarding-highlight-effects {
+          animation: onboarding-highlight-effects-animation 1.5s ease-in-out infinite !important;
+          border-color: #4CAF50 !important;
         }
       `}</style>
     </>
@@ -523,10 +807,9 @@ export function OnboardingInfoButton({ onClick }) {
       style={{
         position: 'fixed',
         top: '20px',
-        right: '380px', // Position left of song bank
-        width: '50px',
-        height: '50px',
-        borderRadius: '50%',
+        left: '20px', // Position in upper left corner
+        padding: '12px 24px',
+        borderRadius: '12px',
         background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
         border: '3px solid #fff',
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
@@ -534,15 +817,16 @@ export function OnboardingInfoButton({ onClick }) {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        fontSize: '24px',
+        fontSize: '18px',
         color: '#fff',
         fontWeight: 'bold',
         zIndex: 1000,
         transition: 'all 0.3s ease',
-        fontFamily: 'Arial, sans-serif'
+        fontFamily: 'StarCrush, sans-serif',
+        letterSpacing: '2px'
       }}
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'scale(1.1)';
+        e.currentTarget.style.transform = 'scale(1.05)';
         e.currentTarget.style.boxShadow = '0 6px 16px rgba(76, 175, 80, 0.5)';
       }}
       onMouseLeave={(e) => {
@@ -551,7 +835,7 @@ export function OnboardingInfoButton({ onClick }) {
       }}
       title="Show tutorial"
     >
-      ?
+      TUTORIAL
     </button>
   );
 }

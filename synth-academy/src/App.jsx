@@ -21,6 +21,7 @@ import { PitchShifterNode } from './components/PitchShifterNode';
 import { PhaserNode } from './components/PhaserNode';
 import { VibratoNode } from './components/VibratoNode';
 import { PianoRollNode } from './components/PianoRollNode';
+import { TVNode } from './components/TVNode';
 import { InteractiveTutorial } from './components/InteractiveTutorial';
 import { SongBank } from './components/SongBank';
 import { FloatingBalloons } from './components/FloatingBalloons';
@@ -58,7 +59,8 @@ const nodeTypes = {
   distortionNode: DistortionNode,
   pitchShifterNode: PitchShifterNode,
   phaserNode: PhaserNode,
-  vibratoNode: VibratoNode
+  vibratoNode: VibratoNode,
+  tvNode: TVNode
 };
 
 function AppContent() {
@@ -75,6 +77,7 @@ function AppContent() {
   const [reverbAmount, setReverbAmount] = useState(0);
   const [distortionAmount, setDistortionAmount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showTutorialMessage, setShowTutorialMessage] = useState(false);
 
   // Check if there are any envelope nodes on the canvas
   const hasEnvelopeNode = nodes.some(node => node.type === 'envelopeNode');
@@ -210,6 +213,11 @@ function AppContent() {
       setSelectedTutorialKey(presetKey);
       setTutorialLevel(level);
       setShowTutorial(true);
+
+      // Show instruction message
+      setTimeout(() => {
+        setShowTutorialMessage(true);
+      }, 500);
     }
   }, []);
 
@@ -492,6 +500,19 @@ function AppContent() {
     };
     setNodes((nds) => [...nds, newNode]);
   }, []);
+
+  // Add a TV monitor node
+  const addTVNode = useCallback(() => {
+    const id = `tv-${Date.now()}`;
+    const newNode = {
+      id,
+      type: 'tvNode',
+      position: { x: Math.abs(panX) + 300, y: Math.abs(panY) + 200 },
+      data: {},
+    };
+    console.log('Adding TV node:', newNode);
+    setNodes((nds) => [...nds, newNode]);
+  }, [panX, panY]);
 
   // Add an envelope node
   const addEnvelopeNode = useCallback(() => {
@@ -776,9 +797,9 @@ function AppContent() {
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.1);
             transform-style: preserve-3d;
             transition: all 0.3s ease;
-            font-size: 16px !important;
-            letter-spacing: 1px;
-            padding: 8px 14px !important;
+            font-size: clamp(10px, 1.2vw, 16px) !important;
+            letter-spacing: clamp(0.5px, 0.08vw, 1px);
+            padding: clamp(4px, 0.6vw, 8px) clamp(8px, 1vw, 14px) !important;
             font-weight: bold !important;
             position: relative;
             cursor: pointer;
@@ -863,10 +884,10 @@ function AppContent() {
 
           .synthworld-title {
             font-family: 'StarCrush', sans-serif;
-            font-size: 72px;
+            font-size: clamp(32px, 5vw, 72px);
             color: #4169E1;
             text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
-            letter-spacing: 8px;
+            letter-spacing: clamp(2px, 0.5vw, 8px);
             text-transform: uppercase;
             position: absolute;
             top: 20px;
@@ -1110,6 +1131,25 @@ function AppContent() {
             }}
           >
             + Add Output
+          </button>
+
+          <button
+            onClick={addTVNode}
+            className="floating-button"
+            data-tooltip="TV"
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #95e1d3 0%, #6dd5ed 100%)',
+              color: '#333',
+              border: 'none',
+              borderRadius: 4,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              animationDelay: '1.9s',
+              '--original-bg': 'linear-gradient(135deg, #95e1d3 0%, #6dd5ed 100%)'
+            }}
+          >
+            📺 Add TV
           </button>
 
           {/* Modulators - Dreamy Rose Pink */}
@@ -1397,6 +1437,69 @@ function AppContent() {
 
       {/* Info Button - Show tutorial again */}
       <OnboardingInfoButton onClick={() => setShowOnboarding(true)} />
+
+      {/* Tutorial Instruction Message */}
+      {showTutorialMessage && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0, 0, 0, 0.8)',
+          zIndex: 20000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            background: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)',
+            border: '3px solid #4CAF50',
+            borderRadius: '16px',
+            padding: '32px 24px',
+            maxWidth: '90vw',
+            width: '450px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+            textAlign: 'center'
+          }}>
+            <h1 style={{
+              margin: '0 0 20px 0',
+              fontSize: 'clamp(12px, 1.8vw, 18px)',
+              color: '#4CAF50',
+              fontFamily: 'StarCrush, sans-serif',
+              textShadow: '2px 2px 0 rgba(0,0,0,0.1)',
+              letterSpacing: '0.5px',
+              lineHeight: '1.3'
+            }}>
+              Fix the broken synth to match the reference sound!
+            </h1>
+            <button
+              onClick={() => setShowTutorialMessage(false)}
+              style={{
+                padding: '16px 32px',
+                background: '#4CAF50',
+                border: 'none',
+                borderRadius: '8px',
+                color: '#fff',
+                cursor: 'pointer',
+                fontFamily: 'StarCrush, sans-serif',
+                fontWeight: 'bold',
+                fontSize: '24px',
+                boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+                letterSpacing: '2px'
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = '#45a049';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = '#4CAF50';
+              }}
+            >
+              Let's Go!
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

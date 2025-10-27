@@ -614,6 +614,7 @@ class VoiceManager {
           }
           break;
 
+        case 'tvNode':
         case 'chorusNode':
         case 'reverbNode':
         case 'delayNode':
@@ -621,7 +622,7 @@ class VoiceManager {
         case 'pitchShifterNode':
         case 'phaserNode':
         case 'vibratoNode':
-          // EFFECTS: Use canvas node (shared across all voices, like filters)
+          // EFFECTS & TV: Use canvas node (shared across all voices, like filters)
           const effectCanvasNodeId = nodeTemplate.canvasNodeId;
           audioNode = audioGraph.getAudioNode(effectCanvasNodeId);
 
@@ -686,6 +687,13 @@ class VoiceManager {
                   depth: nodeTemplate.data.depth || 0.1,
                   wet: nodeTemplate.data.wet || 1
                 });
+                break;
+
+              case 'tvNode':
+                // TV Monitor: The component already registered the node, don't create a new one
+                // Just use a simple gain as fallback (shouldn't happen normally)
+                console.warn('TV node not found in AudioGraph, this should not happen');
+                audioNode = new Tone.Gain(1);
                 break;
             }
 
@@ -847,6 +855,7 @@ class VoiceManager {
     const nodeIndicesWithOutgoingConnections = new Set();
 
     // Mark all node indices that have outgoing audio connections
+    console.log('Template connections:', template.connections);
     template.connections.forEach(conn => {
       nodeIndicesWithOutgoingConnections.add(conn.from);
     });
