@@ -65,7 +65,7 @@ const songs = {
 export function SongBank({ onSelectSong }) {
   const [expandedDifficulty, setExpandedDifficulty] = useState('easy');
   const [selectedSong, setSelectedSong] = useState(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true);
 
   const difficultyColors = {
     easy: { bg: '#4CAF50', hover: '#45a049' },
@@ -84,58 +84,45 @@ export function SongBank({ onSelectSong }) {
       `}</style>
 
 
-      {/* Collapse/Expand Tab - iPod Chrome Style */}
+      {/* Large Purple Button - Bottom Right */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{
           position: 'fixed',
-          right: isCollapsed ? 0 : '320px',
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '50px',
-          height: '120px',
-          background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
-          border: '2px solid #b0b0b0',
-          borderRight: isCollapsed ? 'none' : '2px solid #b0b0b0',
-          borderLeft: isCollapsed ? '2px solid #b0b0b0' : 'none',
-          borderRadius: isCollapsed ? '8px 0 0 8px' : '0 8px 8px 0',
+          right: '32px',
+          bottom: '32px',
+          width: '420px',
+          height: '100px',
+          background: 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 50%, #6A1B9A 100%)',
+          border: '4px solid #4A148C',
+          borderRadius: '20px',
           cursor: 'pointer',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          gap: '8px',
-          fontSize: '16px',
-          color: '#333',
+          fontSize: '26px',
+          color: '#fff',
           zIndex: 1001,
           transition: 'all 0.3s ease-in-out',
-          boxShadow: isCollapsed
-            ? '-4px 0 12px rgba(0,0,0,0.3), inset 1px 0 0 rgba(255,255,255,0.8)'
-            : '4px 0 12px rgba(0,0,0,0.3), inset -1px 0 0 rgba(255,255,255,0.8)',
-          fontFamily: 'Arial, sans-serif',
+          boxShadow: '0 8px 24px rgba(156, 39, 176, 0.6), inset 0 2px 4px rgba(255,255,255,0.2)',
+          fontFamily: 'StarCrush, sans-serif',
           fontWeight: 'bold',
-          letterSpacing: '0.5px',
-          textShadow: '0 1px 0 rgba(255,255,255,0.8)',
-          padding: '10px 8px'
+          letterSpacing: '2px',
+          textShadow: '0 3px 6px rgba(0,0,0,0.7)',
+          padding: '20px 30px'
         }}
         onMouseOver={(e) => {
-          e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #f0f0f0 50%, #e0e0e0 100%)';
+          e.currentTarget.style.background = 'linear-gradient(135deg, #AB47BC 0%, #8E24AA 50%, #7B1FA2 100%)';
+          e.currentTarget.style.transform = 'scale(1.05)';
+          e.currentTarget.style.boxShadow = '0 12px 32px rgba(156, 39, 176, 0.8), inset 0 2px 4px rgba(255,255,255,0.3)';
         }}
         onMouseOut={(e) => {
-          e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)';
+          e.currentTarget.style.background = 'linear-gradient(135deg, #9C27B0 0%, #7B1FA2 50%, #6A1B9A 100%)';
+          e.currentTarget.style.transform = 'scale(1)';
+          e.currentTarget.style.boxShadow = '0 8px 24px rgba(156, 39, 176, 0.6), inset 0 2px 4px rgba(255,255,255,0.2)';
         }}
       >
-        <span style={{ fontSize: '18px' }}>{isCollapsed ? '◀' : '▶'}</span>
-        <div style={{
-          fontSize: '9px',
-          textAlign: 'center',
-          lineHeight: '1.2',
-          writingMode: 'vertical-rl',
-          textOrientation: 'mixed',
-          transform: 'rotate(180deg)'
-        }}>
-          SONG BANK
-        </div>
+        LEARN FAMOUS SOUNDS
       </button>
 
       {/* Song Bank Sidebar */}
@@ -172,7 +159,7 @@ export function SongBank({ onSelectSong }) {
           letterSpacing: '0.5px',
           fontFamily: 'Arial, sans-serif'
         }}>
-          🎵 SONG BANK
+          🎵 LEARN FAMOUS SOUNDS
         </h2>
         <p style={{
           margin: '8px 0 0 0',
