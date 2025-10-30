@@ -56,7 +56,7 @@ export function OutputNode({ id }) {
             <Handle
                 type="target"
                 position={Position.Left}
-                style={{ background: '#f0f' }}
+                style={{ background: '#f0f', width: 24, height: 24, left: -12 }}
             />
 
             <div style={{ marginBottom: 4 }}>

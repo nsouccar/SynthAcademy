@@ -1093,7 +1093,6 @@ export function PianoRollNode({ id, data }) {
     if (data?.compactMode) {
         return (
             <div
-                className="nodrag nopan"
                 style={{
                     background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                     borderRadius: 12,
@@ -1111,13 +1110,15 @@ export function PianoRollNode({ id, data }) {
                     fontSize: '14px',
                     fontWeight: 'bold',
                     textAlign: 'center',
-                    marginBottom: 4
+                    marginBottom: 4,
+                    cursor: 'move'
                 }}>
-                    🎵 Tutorial Melody
+                    Tutorial Melody
                 </div>
 
                 {/* Your synth button */}
                 <button
+                    className="nodrag nopan"
                     onClick={() => {
                         if (isPlayingReference) setIsPlayingReference(false);
                         setIsPlaying(!isPlaying);
@@ -1143,6 +1144,7 @@ export function PianoRollNode({ id, data }) {
                 {/* Reference synth button (only show if referenceParams provided) */}
                 {data?.referenceParams && (
                     <button
+                        className="nodrag nopan"
                         onClick={() => {
                             if (isPlaying) setIsPlaying(false);
                             setIsPlayingReference(!isPlayingReference);
@@ -1162,7 +1164,7 @@ export function PianoRollNode({ id, data }) {
                         onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
                         onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
                     >
-                        {isPlayingReference ? '⏸ Stop Reference' : '🎯 Play Reference'}
+                        {isPlayingReference ? '⏸ Stop Reference' : 'Play Reference'}
                     </button>
                 )}
 

@@ -95,7 +95,7 @@ export function FilterNode({ id, data }) {
                 type="target"
                 position={Position.Left}
                 id="audio-in"
-                style={{ background: '#0f0', top: '50%' }}
+                style={{ background: '#0f0', top: '50%', width: 24, height: 24, left: -12 }}
             />
 
             {/* Modulation input on the top (for envelopes/LFOs) */}
@@ -103,7 +103,7 @@ export function FilterNode({ id, data }) {
                 type="target"
                 position={Position.Top}
                 id="modulation-in"
-                style={{ background: '#f5576c', left: '50%' }}
+                style={{ background: '#f5576c', left: '50%', width: 24, height: 24, top: -12 }}
             />
 
             <strong style={{ color: '#f90' }}>FILTER</strong>
@@ -162,7 +162,7 @@ export function FilterNode({ id, data }) {
                 />
             </div>
 
-            <Handle type="source" position={Position.Right} />
+            <Handle type="source" position={Position.Right} style={{ width: 24, height: 24, right: -12 }} />
         </div>
     );
 }

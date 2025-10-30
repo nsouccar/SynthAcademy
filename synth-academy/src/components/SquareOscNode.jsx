@@ -85,17 +85,17 @@ export function SquareOscNode({ data, id }) {
                 type="target"
                 position={Position.Left}
                 id="control-in"
-                style={{ background: '#0af', top: '50%' }}
+                style={{ background: '#0af', top: '50%', width: 24, height: 24, left: -12 }}
             />
 
             <Handle
                 type="target"
                 position={Position.Top}
                 id="modulation-in"
-                style={{ background: '#f5576c', left: '50%' }}
+                style={{ background: '#f5576c', left: '50%', width: 24, height: 24, top: -12 }}
             />
 
-            <Handle type="source" position={Position.Right} style={{ background: '#0f0' }} />
+            <Handle type="source" position={Position.Right} style={{ background: '#0f0', width: 24, height: 24, right: -12 }} />
 
             <strong style={{ color: '#ff4a4a' }}>SQUARE</strong>
             <p style={{ fontSize: '0.8em' }}>Oscillator</p>

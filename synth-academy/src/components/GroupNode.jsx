@@ -112,7 +112,7 @@ export function GroupNode({ id, data }) {
             <Handle
                 type="target"
                 position={Position.Left}
-                style={{ background: '#fff', width: 12, height: 12 }}
+                style={{ background: '#fff', width: 24, height: 24, left: -12 }}
             />
 
             {/* Label */}
@@ -187,7 +187,7 @@ export function GroupNode({ id, data }) {
             <Handle
                 type="source"
                 position={Position.Right}
-                style={{ background: '#fff', width: 12, height: 12 }}
+                style={{ background: '#fff', width: 24, height: 24, right: -12 }}
             />
         </div>
     );

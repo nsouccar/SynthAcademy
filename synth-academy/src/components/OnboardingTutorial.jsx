@@ -69,10 +69,9 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
     {
       id: 'play',
       title: 'Make Some Music!',
-      description: 'Click on the Piano node and use your keyboard to play notes and hear your synth!',
+      description: 'Play notes using your keyboard! Lower row (Z X C V B N M) plays white keys, upper row (Q W E R T Y U) plays an octave higher. Press S D G H J for black keys. Use arrow keys Up/Down to change octaves. Or click the keys with your mouse!',
       targetSelector: '.react-flow__node-pianoNode',
-      position: 'center',
-      flashPiano: true
+      position: 'center'
     },
     {
       id: 'envelope-add',
@@ -85,7 +84,7 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
     {
       id: 'delete-wire',
       title: 'Remove the Old Connection',
-      description: 'Click on the wire between the oscillator and Output to delete it, so we can add the Envelope in between!',
+      description: 'Click on the wire between the oscillator and Output, then hit Delete on your keyboard to remove it, so we can add the Envelope in between!',
       targetSelector: '.react-flow__edge',
       position: 'center',
       flashEdge: true
@@ -204,10 +203,10 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
     {
       id: 'tutorial-complete',
       title: 'You Did It!',
-      description: 'Now you know the basics! Exit to make weird sounds and experiment, or click the Song Bank tab to learn how to recreate professional synths from your favorite songs!',
+      description: 'Now you know the basics! Exit to make weird sounds and experiment, or click the flashing purple button to learn how to recreate professional synths from your favorite songs!',
       targetSelector: null,
       position: 'center',
-      highlightSongBank: true
+      highlightLearnButton: true
     }
   ];
 
@@ -456,21 +455,21 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
     };
   }, [currentStepData]);
 
-  // Highlight Song Bank tab
+  // Highlight Learn Famous Sounds button
   useEffect(() => {
-    if (!currentStepData?.highlightSongBank) return;
+    if (!currentStepData?.highlightLearnButton) return;
 
-    // Target the song bank collapse/expand button by finding button with "SONG BANK" text
+    // Target the Learn Famous Sounds button by finding button with "LEARN FAMOUS SOUNDS" text
     const buttons = Array.from(document.querySelectorAll('button'));
-    const songBankButton = buttons.find(btn => btn.textContent.includes('SONG BANK'));
+    const learnButton = buttons.find(btn => btn.textContent.includes('LEARN FAMOUS SOUNDS'));
 
-    if (songBankButton) {
-      songBankButton.classList.add('onboarding-highlight-song-bank');
+    if (learnButton) {
+      learnButton.classList.add('onboarding-highlight-learn-button');
     }
 
     return () => {
-      if (songBankButton) {
-        songBankButton.classList.remove('onboarding-highlight-song-bank');
+      if (learnButton) {
+        learnButton.classList.remove('onboarding-highlight-learn-button');
       }
     };
   }, [currentStepData]);
@@ -647,18 +646,22 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
       <style>{`
         @keyframes onboarding-flash-animation {
           0%, 100% {
-            box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            box-shadow: 0 0 0 0 rgba(76, 175, 80, 1);
             transform: scale(1);
+            background: inherit;
           }
           50% {
-            box-shadow: 0 0 20px 10px rgba(76, 175, 80, 0.3);
-            transform: scale(1.05);
+            box-shadow: 0 0 60px 30px rgba(76, 175, 80, 0.9);
+            transform: scale(1.15);
+            background: rgba(76, 175, 80, 0.3);
           }
         }
 
         .onboarding-flash {
-          animation: onboarding-flash-animation 1.5s ease-in-out infinite !important;
-          border-color: #4CAF50 !important;
+          animation: onboarding-flash-animation 0.8s ease-in-out infinite !important;
+          border: 4px solid #4CAF50 !important;
+          position: relative;
+          z-index: 9999 !important;
         }
 
         @keyframes onboarding-flash-handle-animation {
@@ -761,20 +764,23 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
           border-radius: 4px !important;
         }
 
-        @keyframes onboarding-highlight-song-bank-animation {
+        @keyframes onboarding-highlight-learn-button-animation {
           0%, 100% {
-            box-shadow: 0 0 20px 5px rgba(76, 175, 80, 0.8);
-            border-color: #4CAF50;
+            box-shadow: 0 0 40px 20px rgba(156, 39, 176, 1);
+            transform: scale(1);
+            background: linear-gradient(135deg, #9C27B0 0%, #7B1FA2 50%, #6A1B9A 100%) !important;
           }
           50% {
-            box-shadow: 0 0 30px 10px rgba(76, 175, 80, 0.6);
-            border-color: #66BB6A;
+            box-shadow: 0 0 60px 30px rgba(156, 39, 176, 0.8);
+            transform: scale(1.08);
+            background: linear-gradient(135deg, #CE93D8 0%, #BA68C8 50%, #AB47BC 100%) !important;
           }
         }
 
-        .onboarding-highlight-song-bank {
-          animation: onboarding-highlight-song-bank-animation 1.5s ease-in-out infinite !important;
+        .onboarding-highlight-learn-button {
+          animation: onboarding-highlight-learn-button-animation 0.8s ease-in-out infinite !important;
           z-index: 10001 !important;
+          border-color: #E1BEE7 !important;
         }
 
         @keyframes onboarding-highlight-effects-animation {

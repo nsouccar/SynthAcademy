@@ -209,8 +209,14 @@ export function PianoNode({ id }) {
                     return (
                         <div
                             key={`${note}-${octave}`}
-                            onMouseDown={() => playNote(note, octave)}
-                            onMouseUp={() => stopNote(note, octave)}
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                playNote(note, octave);
+                            }}
+                            onMouseUp={(e) => {
+                                e.stopPropagation();
+                                stopNote(note, octave);
+                            }}
                             onMouseLeave={() => {
                                 if (activeNotes.has(noteKey)) stopNote(note, octave);
                             }}
@@ -247,8 +253,14 @@ export function PianoNode({ id }) {
                     return (
                         <div
                             key={`${note}-${octave + 1}`}
-                            onMouseDown={() => playNote(note, octave + 1)}
-                            onMouseUp={() => stopNote(note, octave + 1)}
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                playNote(note, octave + 1);
+                            }}
+                            onMouseUp={(e) => {
+                                e.stopPropagation();
+                                stopNote(note, octave + 1);
+                            }}
                             onMouseLeave={() => {
                                 if (activeNotes.has(noteKey)) stopNote(note, octave + 1);
                             }}
@@ -290,8 +302,14 @@ export function PianoNode({ id }) {
                     return (
                         <div
                             key={`${note}-${octave}`}
-                            onMouseDown={() => playNote(note, octave)}
-                            onMouseUp={() => stopNote(note, octave)}
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                playNote(note, octave);
+                            }}
+                            onMouseUp={(e) => {
+                                e.stopPropagation();
+                                stopNote(note, octave);
+                            }}
                             onMouseLeave={() => {
                                 if (activeNotes.has(noteKey)) stopNote(note, octave);
                             }}
@@ -324,8 +342,14 @@ export function PianoNode({ id }) {
                     return (
                         <div
                             key={`${note}-${octave + 1}`}
-                            onMouseDown={() => playNote(note, octave + 1)}
-                            onMouseUp={() => stopNote(note, octave + 1)}
+                            onMouseDown={(e) => {
+                                e.stopPropagation();
+                                playNote(note, octave + 1);
+                            }}
+                            onMouseUp={(e) => {
+                                e.stopPropagation();
+                                stopNote(note, octave + 1);
+                            }}
                             onMouseLeave={() => {
                                 if (activeNotes.has(noteKey)) stopNote(note, octave + 1);
                             }}
