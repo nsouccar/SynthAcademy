@@ -178,7 +178,7 @@ export function OscNode({ data, id }) {
                 type="target"
                 position={Position.Left}
                 id="control-in"
-                style={{ background: '#0af', top: '50%' }}
+                style={{ background: '#0af', top: '50%', width: 24, height: 24, left: -12 }}
             />
 
             {/* Modulation input on the top (for pitch envelopes) */}
@@ -186,11 +186,11 @@ export function OscNode({ data, id }) {
                 type="target"
                 position={Position.Top}
                 id="modulation-in"
-                style={{ background: '#f5576c', left: '50%' }}
+                style={{ background: '#f5576c', left: '50%', width: 24, height: 24, top: -12 }}
             />
 
             {/* Output handle on the right for audio */}
-            <Handle type="source" position={Position.Right} style={{ background: '#0f0' }} />
+            <Handle type="source" position={Position.Right} style={{ background: '#0f0', width: 24, height: 24, right: -12 }} />
 
             {label ? (
                 <>

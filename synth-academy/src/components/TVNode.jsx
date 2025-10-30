@@ -159,7 +159,7 @@ export function TVNode({ id, data }) {
       <Handle
         type="target"
         position={Position.Left}
-        style={{ background: '#00ff00', width: 10, height: 10 }}
+        style={{ background: '#00ff00', width: 24, height: 24, left: -12 }}
       />
 
       {/* Title */}
@@ -226,7 +226,7 @@ export function TVNode({ id, data }) {
       <Handle
         type="source"
         position={Position.Right}
-        style={{ background: '#00ff00', width: 10, height: 10 }}
+        style={{ background: '#00ff00', width: 24, height: 24, right: -12 }}
       />
     </div>
   );

@@ -19,3 +19,48 @@ body {
 p, .allow-wrap {
   white-space: normal;
 }
+
+/* Responsive scaling for smaller screens */
+@media (max-width: 1200px) {
+  .react-flow__node {
+    min-width: 240px !important;
+    padding: 20px !important;
+    font-size: 0.95em !important;
+  }
+
+  .react-flow__handle {
+    width: 36px !important;
+    height: 36px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  .react-flow__node {
+    min-width: 200px !important;
+    padding: 16px !important;
+    font-size: 0.85em !important;
+  }
+
+  .react-flow__handle {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .floating-button {
+    font-size: clamp(8px, 1vw, 12px) !important;
+    padding: clamp(3px, 0.5vw, 6px) clamp(6px, 0.8vw, 12px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .react-flow__node {
+    min-width: 180px !important;
+    padding: 12px !important;
+    font-size: 0.75em !important;
+  }
+
+  .react-flow__handle {
+    width: 50px !important;
+    height: 50px !important;
+  }
+}

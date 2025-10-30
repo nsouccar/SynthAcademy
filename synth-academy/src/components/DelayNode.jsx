@@ -158,13 +158,13 @@ export function DelayNode({ id, data }) {
         type="target"
         position={Position.Left}
         id="audio-in"
-        style={{ background: '#0f0', top: '50%' }}
+        style={{ background: '#0f0', top: '50%', width: 24, height: 24, left: -12 }}
       />
       <Handle
         type="source"
         position={Position.Right}
         id="audio-out"
-        style={{ background: '#0f0', top: '50%' }}
+        style={{ background: '#0f0', top: '50%', width: 24, height: 24, right: -12 }}
       />
     </div>
   );

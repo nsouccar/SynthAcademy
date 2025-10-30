@@ -467,7 +467,7 @@ export function EnvelopeNode({ id, data }) {
             <Handle
                 type="target"
                 position={Position.Left}
-                style={{ background: '#fff', width: 10, height: 10 }}
+                style={{ background: '#fff', width: 24, height: 24, left: -12 }}
             />
 
             {/* Title - draggable area */}
@@ -639,7 +639,7 @@ export function EnvelopeNode({ id, data }) {
             <Handle
                 type="source"
                 position={Position.Right}
-                style={{ background: '#fff', width: 10, height: 10 }}
+                style={{ background: '#fff', width: 24, height: 24, right: -12 }}
             />
         </div>
     );

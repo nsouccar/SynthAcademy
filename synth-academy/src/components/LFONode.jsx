@@ -315,7 +315,7 @@ export function LFONode({ id, data }) {
         type="source"
         position={Position.Right}
         id="modulation-out"
-        style={{ background: '#f5576c', top: '50%' }}
+        style={{ background: '#f5576c', top: '50%', width: 24, height: 24, right: -12 }}
       />
     </div>
   );

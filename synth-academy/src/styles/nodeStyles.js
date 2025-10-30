@@ -106,16 +106,16 @@ export const getNodeBaseStyle = (primaryColor, accentColor, useGrid = true) => (
   overflow: 'visible'
 });
 
-// Handle style (connection points)
+// Handle style (connection points) - BIGGER for easier connection
 export const handleStyle = {
   background: 'linear-gradient(145deg, #ffffff, #c0c0c0)',
-  width: 16,
-  height: 16,
-  border: '2px solid rgba(255, 255, 255, 0.8)',
+  width: 32,
+  height: 32,
+  border: '3px solid rgba(255, 255, 255, 0.8)',
   boxShadow: `
-    0 2px 6px rgba(0,0,0,0.4),
-    inset 0 1px 0 rgba(255,255,255,0.6),
-    inset 0 -1px 0 rgba(0,0,0,0.3)
+    0 4px 10px rgba(0,0,0,0.5),
+    inset 0 2px 0 rgba(255,255,255,0.7),
+    inset 0 -2px 0 rgba(0,0,0,0.4)
   `
 };
 
