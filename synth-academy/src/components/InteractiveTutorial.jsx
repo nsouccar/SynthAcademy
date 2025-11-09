@@ -594,12 +594,12 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
       <div style={{
         position: 'fixed',
         bottom: '40px',
-        left: '50%',
-        transform: 'translateX(-50%)',
+        left: '40px',
         zIndex: 1000,
         display: 'flex',
         alignItems: 'center',
-        gap: '30px'
+        gap: '30px',
+        maxWidth: 'calc(100vw - 420px)' // Leave space for purple button (320px + margins)
       }}>
         <div style={{
           fontFamily: 'StarCrush, sans-serif',
