@@ -24,10 +24,11 @@ import { PianoRollNode } from './components/PianoRollNode';
 import { TVNode } from './components/TVNode';
 import { InteractiveTutorial } from './components/InteractiveTutorial';
 import { SongBank } from './components/SongBank';
+import { getPresetKeyForSong } from './tutorialGenerator';
 import { FloatingBalloons } from './components/FloatingBalloons';
 import { SunRays } from './components/SunRays';
 import { AuroraLights } from './components/AuroraLights';
-import { OnboardingTutorial, OnboardingInfoButton } from './components/OnboardingTutorial';
+import { OnboardingTutorial, OnboardingInfoButton, RecipesButton } from './components/OnboardingTutorial';
 import { audioGraph, setVoiceManager } from './AudioGraph';
 import { voiceManager } from './VoiceManager';
 import * as Tone from 'tone';
@@ -78,6 +79,7 @@ function AppContent() {
   const [distortionAmount, setDistortionAmount] = useState(0);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [showTutorialMessage, setShowTutorialMessage] = useState(false);
+  const [songBankCollapsed, setSongBankCollapsed] = useState(true);
 
   // Check if there are any envelope nodes on the canvas
   const hasEnvelopeNode = nodes.some(node => node.type === 'envelopeNode');
@@ -198,13 +200,8 @@ function AppContent() {
 
   // Handle song selection from the song bank
   const handleSongSelect = useCallback((song, level) => {
-    // Map song IDs to tutorial preset keys
-    const songToPresetMap = {
-      'better-off-alone': 'betterOffAlone'
-      // Add more mappings as tutorials are created
-    };
-
-    const presetKey = songToPresetMap[song.id];
+    // Get preset key from song ID (e.g., "better-off-alone" -> "betterOffAlone")
+    const presetKey = getPresetKeyForSong(song.id);
     if (presetKey) {
       // Clear the canvas before starting tutorial
       setNodes([]);
@@ -793,7 +790,6 @@ function AppContent() {
           .floating-button {
             font-family: 'ByteBounce', sans-serif !important;
             border: 3px solid black !important;
-            animation: float3d 4s ease-in-out infinite;
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3), 0 0 20px rgba(255, 255, 255, 0.1);
             transform-style: preserve-3d;
             transition: all 0.3s ease;
@@ -859,7 +855,6 @@ function AppContent() {
           }
 
           .floating-button:hover {
-            animation-play-state: paused;
             transform: translateY(-6px) translateZ(20px) scale(1.05) !important;
             box-shadow: 0 12px 24px rgba(0, 0, 0, 0.4), 0 0 30px rgba(255, 255, 255, 0.2);
             background: rgba(255, 255, 255, 0.1) !important;
@@ -1149,7 +1144,7 @@ function AppContent() {
               '--original-bg': 'linear-gradient(135deg, #95e1d3 0%, #6dd5ed 100%)'
             }}
           >
-            📺 Add TV
+            Add TV
           </button>
 
           {/* Modulators - Dreamy Rose Pink */}
@@ -1398,7 +1393,7 @@ function AppContent() {
             setNodes={setNodes}
             setEdges={setEdges}
             onComplete={() => {
-              alert('🎉 Tutorial Complete! You nailed it!');
+              alert('Tutorial Complete! You nailed it!');
               // Clear the canvas after completing tutorial
               setNodes([]);
               setEdges([]);
@@ -1419,7 +1414,11 @@ function AppContent() {
       </div>
 
       {/* Song Bank Sidebar */}
-      <SongBank onSelectSong={handleSongSelect} />
+      <SongBank
+        onSelectSong={handleSongSelect}
+        isCollapsed={songBankCollapsed}
+        setIsCollapsed={setSongBankCollapsed}
+      />
 
       {/* Onboarding Tutorial */}
       {showOnboarding && (
@@ -1438,6 +1437,12 @@ function AppContent() {
       {/* Info Button - Show tutorial again */}
       <OnboardingInfoButton onClick={() => setShowOnboarding(true)} />
 
+      {/* Recipes Button - Toggle song bank */}
+      <RecipesButton
+        onClick={() => setSongBankCollapsed(!songBankCollapsed)}
+        isOpen={!songBankCollapsed}
+      />
+
       {/* Tutorial Instruction Message */}
       {showTutorialMessage && (
         <div style={{
@@ -1454,7 +1459,7 @@ function AppContent() {
         }}>
           <div style={{
             background: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)',
-            border: '3px solid #4CAF50',
+            border: '3px solid #4169E1',
             borderRadius: '16px',
             padding: '32px 24px',
             maxWidth: '90vw',
@@ -1465,7 +1470,7 @@ function AppContent() {
             <h1 style={{
               margin: '0 0 20px 0',
               fontSize: 'clamp(12px, 1.8vw, 18px)',
-              color: '#4CAF50',
+              color: '#4169E1',
               fontFamily: 'StarCrush, sans-serif',
               textShadow: '2px 2px 0 rgba(0,0,0,0.1)',
               letterSpacing: '0.5px',
@@ -1477,7 +1482,7 @@ function AppContent() {
               onClick={() => setShowTutorialMessage(false)}
               style={{
                 padding: '16px 32px',
-                background: '#4CAF50',
+                background: '#4169E1',
                 border: 'none',
                 borderRadius: '8px',
                 color: '#fff',
@@ -1485,14 +1490,14 @@ function AppContent() {
                 fontFamily: 'StarCrush, sans-serif',
                 fontWeight: 'bold',
                 fontSize: '24px',
-                boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)',
+                boxShadow: '0 4px 12px rgba(65, 105, 225, 0.3)',
                 letterSpacing: '2px'
               }}
               onMouseEnter={(e) => {
-                e.currentTarget.style.background = '#45a049';
+                e.currentTarget.style.background = '#3457b2';
               }}
               onMouseLeave={(e) => {
-                e.currentTarget.style.background = '#4CAF50';
+                e.currentTarget.style.background = '#4169E1';
               }}
             >
               Let's Go!

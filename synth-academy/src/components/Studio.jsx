@@ -318,7 +318,7 @@ const Studio = ({ audioGraph }) => {
             boxShadow: isRecording ? '0 0 20px rgba(244, 67, 54, 0.6)' : 'none'
           }}
         >
-          {isRecording ? '⏺ Recording...' : '⏺ Record'}
+          {isRecording ? 'Recording...' : 'Record'}
         </button>
 
         <button
@@ -336,7 +336,7 @@ const Studio = ({ audioGraph }) => {
             opacity: (tracks.length === 0 || isRecording) ? 0.5 : 1
           }}
         >
-          {isPlaying ? '⏸ Stop' : '▶ Play All'}
+          {isPlaying ? 'Stop' : 'Play All'}
         </button>
 
         <div style={{

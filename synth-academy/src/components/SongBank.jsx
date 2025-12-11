@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
+import { getSongList } from '../tutorialGenerator';
 
-const songs = {
+// Base song catalog (songs without tutorials yet)
+const baseSongs = {
   easy: [
-    { id: 'better-off-alone', artist: 'Alice Deejay', title: 'Better Off Alone', available: true },
     { id: 'trans-europe-express', artist: 'Kraftwerk', title: 'Trans-Europe Express', available: false },
-    { id: 'cars', artist: 'Gary Numan', title: 'Cars', available: false },
     { id: 'electricity', artist: 'OMD', title: 'Electricity', available: false },
     { id: 'sleepwalk', artist: 'Ultravox', title: 'Sleepwalk', available: false },
     { id: 'homosapien', artist: 'Pete Shelley', title: 'Homosapien', available: false },
@@ -62,16 +62,43 @@ const songs = {
   ]
 };
 
-export function SongBank({ onSelectSong }) {
+// Merge available tutorials with base catalog
+function getMergedSongs() {
+  const availableSongs = getSongList();
+  const merged = { easy: [], medium: [], hard: [] };
+
+  // Create a set of available song IDs for quick lookup
+  const availableIds = new Set();
+  Object.values(availableSongs).forEach(list => {
+    list.forEach(song => availableIds.add(song.id));
+  });
+
+  // For each difficulty, add available songs first, then unavailable ones
+  ['easy', 'medium', 'hard'].forEach(difficulty => {
+    // Add songs from tutorial configs (available)
+    merged[difficulty].push(...(availableSongs[difficulty] || []));
+
+    // Add remaining songs from base catalog (unavailable), skip duplicates
+    baseSongs[difficulty].forEach(song => {
+      if (!availableIds.has(song.id)) {
+        merged[difficulty].push(song);
+      }
+    });
+  });
+
+  return merged;
+}
+
+const songs = getMergedSongs();
+
+export function SongBank({ onSelectSong, isCollapsed: controlledCollapsed, setIsCollapsed: controlledSetIsCollapsed }) {
   const [expandedDifficulty, setExpandedDifficulty] = useState('easy');
   const [selectedSong, setSelectedSong] = useState(null);
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
 
-  const difficultyColors = {
-    easy: { bg: '#4CAF50', hover: '#45a049' },
-    medium: { bg: '#FF9800', hover: '#e68900' },
-    hard: { bg: '#f44336', hover: '#da190b' }
-  };
+  // Use controlled state if provided, otherwise use internal state
+  const isCollapsed = controlledCollapsed !== undefined ? controlledCollapsed : internalCollapsed;
+  const setIsCollapsed = controlledSetIsCollapsed || setInternalCollapsed;
 
   return (
     <>
@@ -84,7 +111,7 @@ export function SongBank({ onSelectSong }) {
       `}</style>
 
 
-      {/* Collapse/Expand Tab - iPod Chrome Style */}
+      {/* Collapse/Expand Tab - Glassmorphic Style */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         style={{
@@ -92,12 +119,13 @@ export function SongBank({ onSelectSong }) {
           right: isCollapsed ? 0 : '320px',
           top: '50%',
           transform: 'translateY(-50%)',
-          width: '50px',
-          height: '120px',
-          background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
-          border: '2px solid #b0b0b0',
-          borderRight: isCollapsed ? 'none' : '2px solid #b0b0b0',
-          borderLeft: isCollapsed ? '2px solid #b0b0b0' : 'none',
+          width: '40px',
+          height: '100px',
+          background: 'rgba(30, 30, 40, 0.8)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRight: isCollapsed ? '1px solid rgba(255, 255, 255, 0.1)' : 'none',
           borderRadius: isCollapsed ? '8px 0 0 8px' : '0 8px 8px 0',
           cursor: 'pointer',
           display: 'flex',
@@ -105,138 +133,153 @@ export function SongBank({ onSelectSong }) {
           alignItems: 'center',
           justifyContent: 'center',
           gap: '8px',
-          fontSize: '16px',
-          color: '#333',
+          fontSize: '14px',
+          color: '#fff',
           zIndex: 1001,
           transition: 'all 0.3s ease-in-out',
-          boxShadow: isCollapsed
-            ? '-4px 0 12px rgba(0,0,0,0.3), inset 1px 0 0 rgba(255,255,255,0.8)'
-            : '4px 0 12px rgba(0,0,0,0.3), inset -1px 0 0 rgba(255,255,255,0.8)',
-          fontFamily: 'Arial, sans-serif',
+          boxShadow: '-4px 0 20px rgba(0, 0, 0, 0.4)',
+          fontFamily: 'ByteBounce, sans-serif',
           fontWeight: 'bold',
           letterSpacing: '0.5px',
-          textShadow: '0 1px 0 rgba(255,255,255,0.8)',
-          padding: '10px 8px'
+          padding: '10px 6px'
         }}
         onMouseOver={(e) => {
-          e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #f0f0f0 50%, #e0e0e0 100%)';
+          e.currentTarget.style.background = 'rgba(50, 50, 60, 0.9)';
+          e.currentTarget.style.boxShadow = '-4px 0 25px rgba(0, 0, 0, 0.5), 0 0 15px rgba(255, 182, 193, 0.3)';
         }}
         onMouseOut={(e) => {
-          e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)';
+          e.currentTarget.style.background = 'rgba(30, 30, 40, 0.8)';
+          e.currentTarget.style.boxShadow = '-4px 0 20px rgba(0, 0, 0, 0.4)';
         }}
       >
-        <span style={{ fontSize: '18px' }}>{isCollapsed ? '◀' : '▶'}</span>
+        <span style={{ fontSize: '14px', opacity: 0.8 }}>{isCollapsed ? '◀' : '▶'}</span>
         <div style={{
           fontSize: '9px',
           textAlign: 'center',
           lineHeight: '1.2',
           writingMode: 'vertical-rl',
           textOrientation: 'mixed',
-          transform: 'rotate(180deg)'
+          transform: 'rotate(180deg)',
+          opacity: 0.9
         }}>
-          SONG BANK
+          SONGS
         </div>
       </button>
 
-      {/* Song Bank Sidebar */}
+      {/* Song Bank Sidebar - Glassmorphic Dark */}
       <div style={{
         position: 'fixed',
         top: 0,
         right: isCollapsed ? '-320px' : 0,
         width: '320px',
         height: '100vh',
-        background: 'linear-gradient(180deg, #f5f5f5 0%, #e0e0e0 50%, #d0d0d0 100%)',
-        borderLeft: '3px solid #c0c0c0',
-        boxShadow: '-8px 0 24px rgba(0,0,0,0.4), inset 2px 0 4px rgba(255,255,255,0.6)',
+        background: 'rgba(20, 20, 30, 0.85)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        borderLeft: '1px solid rgba(255, 255, 255, 0.1)',
+        boxShadow: '-8px 0 32px rgba(0, 0, 0, 0.5)',
         zIndex: 1000,
         overflow: 'hidden',
         display: 'flex',
         flexDirection: 'column',
-        transition: 'right 0.3s ease-in-out',
-        borderRadius: '12px 0 0 12px'
+        transition: 'right 0.3s ease-in-out'
       }}>
-      {/* Header - iPod Chrome Style */}
+      {/* Header */}
       <div style={{
-        padding: '24px 20px',
-        background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d0d0d0 100%)',
-        borderBottom: '2px solid #a0a0a0',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)'
+        padding: '20px 16px',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+        background: 'rgba(255, 255, 255, 0.03)'
       }}>
         <h2 style={{
           margin: 0,
-          color: '#333',
+          color: '#fff',
           fontSize: '22px',
           fontWeight: 'bold',
           textAlign: 'center',
-          textShadow: '0 1px 0 rgba(255,255,255,0.8)',
-          letterSpacing: '0.5px',
-          fontFamily: 'Arial, sans-serif'
+          letterSpacing: '2px',
+          fontFamily: 'ByteBounce, sans-serif',
+          textShadow: '0 0 20px rgba(255, 182, 193, 0.5)'
         }}>
-          🎵 SONG BANK
+          SONG BANK
         </h2>
         <p style={{
-          margin: '8px 0 0 0',
-          color: '#666',
-          fontSize: '11px',
+          margin: '6px 0 0 0',
+          color: 'rgba(255, 255, 255, 0.5)',
+          fontSize: '12px',
           textAlign: 'center',
-          textShadow: '0 1px 0 rgba(255,255,255,0.6)',
-          fontFamily: 'Arial, sans-serif'
+          fontFamily: 'ByteBounce, sans-serif',
+          letterSpacing: '1px'
         }}>
           Classic Synth Tutorials
         </p>
       </div>
 
-      {/* Song List - iPod Playlist Style */}
+      {/* Song List */}
       <div style={{
         flex: 1,
         overflowY: 'auto',
-        padding: '12px',
-        background: 'linear-gradient(180deg, #fafafa 0%, #f0f0f0 100%)'
+        padding: '12px'
       }}>
-        {Object.entries(songs).map(([difficulty, songList]) => (
-          <div key={difficulty} style={{ marginBottom: '16px' }}>
-            {/* Difficulty Header - iPod Button Style */}
+        {Object.entries(songs).map(([difficulty, songList]) => {
+          // Pastel gradients matching the app's aesthetic
+          const difficultyStyles = {
+            easy: {
+              gradient: 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)',
+              glow: 'rgba(168, 230, 207, 0.4)',
+              color: '#1a3a1a'
+            },
+            medium: {
+              gradient: 'linear-gradient(135deg, #ffeaa7 0%, #fdcb6e 100%)',
+              glow: 'rgba(253, 203, 110, 0.4)',
+              color: '#3a3a1a'
+            },
+            hard: {
+              gradient: 'linear-gradient(135deg, #ffd1dc 0%, #ffb6c1 100%)',
+              glow: 'rgba(255, 182, 193, 0.4)',
+              color: '#3a1a2a'
+            }
+          };
+          const style = difficultyStyles[difficulty];
+
+          return (
+          <div key={difficulty} style={{ marginBottom: '12px' }}>
+            {/* Difficulty Header - Pastel Gradient Style */}
             <button
               onClick={() => setExpandedDifficulty(expandedDifficulty === difficulty ? null : difficulty)}
               style={{
                 width: '100%',
                 padding: '10px 14px',
-                background: expandedDifficulty === difficulty
-                  ? 'linear-gradient(180deg, #4a9eff 0%, #2d7fd9 100%)'
-                  : 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
-                color: expandedDifficulty === difficulty ? '#fff' : '#333',
-                border: '1px solid #b0b0b0',
+                background: style.gradient,
+                color: style.color,
+                border: '2px solid rgba(0, 0, 0, 0.2)',
                 borderRadius: 6,
                 cursor: 'pointer',
                 fontWeight: 'bold',
-                fontSize: '12px',
+                fontSize: '14px',
                 display: 'flex',
                 justifyContent: 'space-between',
                 alignItems: 'center',
-                marginBottom: expandedDifficulty === difficulty ? 6 : 0,
+                marginBottom: expandedDifficulty === difficulty ? 8 : 0,
                 transition: 'all 0.2s',
                 boxShadow: expandedDifficulty === difficulty
-                  ? 'inset 0 2px 4px rgba(0,0,0,0.3)'
-                  : '0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)',
-                textShadow: expandedDifficulty === difficulty
-                  ? '0 1px 1px rgba(0,0,0,0.3)'
-                  : '0 1px 0 rgba(255,255,255,0.8)',
-                fontFamily: 'Arial, sans-serif',
-                letterSpacing: '0.3px'
+                  ? `0 0 20px ${style.glow}, inset 0 2px 4px rgba(0,0,0,0.1)`
+                  : '0 2px 8px rgba(0,0,0,0.3)',
+                fontFamily: 'ByteBounce, sans-serif',
+                letterSpacing: '1px'
               }}
               onMouseOver={(e) => {
-                if (expandedDifficulty !== difficulty) {
-                  e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #f0f0f0 50%, #e0e0e0 100%)';
-                }
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = `0 4px 15px rgba(0,0,0,0.3), 0 0 20px ${style.glow}`;
               }}
               onMouseOut={(e) => {
-                if (expandedDifficulty !== difficulty) {
-                  e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)';
-                }
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = expandedDifficulty === difficulty
+                  ? `0 0 20px ${style.glow}, inset 0 2px 4px rgba(0,0,0,0.1)`
+                  : '0 2px 8px rgba(0,0,0,0.3)';
               }}
             >
               <span>{difficulty.toUpperCase()} ({songList.length})</span>
-              <span style={{ fontSize: '10px' }}>{expandedDifficulty === difficulty ? '▼' : '▶'}</span>
+              <span style={{ fontSize: '10px', opacity: 0.7 }}>{expandedDifficulty === difficulty ? '▼' : '▶'}</span>
             </button>
 
             {/* Song List */}
@@ -244,7 +287,7 @@ export function SongBank({ onSelectSong }) {
               <div style={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 6
+                gap: 4
               }}>
                 {songList.map((song) => (
                   <div key={song.id}>
@@ -253,44 +296,40 @@ export function SongBank({ onSelectSong }) {
                       disabled={!song.available}
                       style={{
                         width: '100%',
-                        padding: '8px 10px',
+                        padding: '10px 12px',
                         background: song.available
-                          ? 'linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%)'
-                          : 'linear-gradient(180deg, #e8e8e8 0%, #d8d8d8 100%)',
-                        color: song.available ? '#000' : '#999',
-                        border: '1px solid #c0c0c0',
-                        borderBottom: selectedSong?.id === song.id ? 'none' : '1px solid #a0a0a0',
-                        borderRadius: selectedSong?.id === song.id ? '4px 4px 0 0' : 0,
+                          ? 'rgba(255, 255, 255, 0.08)'
+                          : 'rgba(255, 255, 255, 0.02)',
+                        color: song.available ? '#fff' : 'rgba(255, 255, 255, 0.3)',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
+                        borderRadius: selectedSong?.id === song.id ? '6px 6px 0 0' : 6,
                         cursor: song.available ? 'pointer' : 'not-allowed',
                         textAlign: 'left',
                         fontSize: '11px',
-                        opacity: song.available ? 1 : 0.6,
-                        transition: 'all 0.15s',
-                        boxShadow: song.available
-                          ? 'inset 0 1px 0 rgba(255,255,255,0.8), 0 1px 1px rgba(0,0,0,0.1)'
-                          : 'inset 0 1px 0 rgba(255,255,255,0.5)',
-                        fontFamily: 'Arial, sans-serif',
-                        textShadow: song.available ? '0 1px 0 rgba(255,255,255,0.8)' : 'none'
+                        opacity: song.available ? 1 : 0.5,
+                        transition: 'all 0.2s',
+                        fontFamily: 'ByteBounce, sans-serif'
                       }}
                       onMouseOver={(e) => {
                         if (song.available) {
-                          e.currentTarget.style.background = 'linear-gradient(180deg, #4a9eff 0%, #2d7fd9 100%)';
-                          e.currentTarget.style.color = '#fff';
-                          e.currentTarget.style.textShadow = '0 1px 1px rgba(0,0,0,0.3)';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                          e.currentTarget.style.boxShadow = '0 0 15px rgba(255, 182, 193, 0.2)';
                         }
                       }}
                       onMouseOut={(e) => {
                         if (song.available && selectedSong?.id !== song.id) {
-                          e.currentTarget.style.background = 'linear-gradient(180deg, #ffffff 0%, #f8f8f8 100%)';
-                          e.currentTarget.style.color = '#000';
-                          e.currentTarget.style.textShadow = '0 1px 0 rgba(255,255,255,0.8)';
+                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.08)';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                          e.currentTarget.style.boxShadow = 'none';
                         }
                       }}
                     >
-                      <div style={{ fontWeight: 'bold', marginBottom: 3, fontSize: '11px' }}>
-                        {song.available ? '▶ ' : '🔒 '}{song.title}
+                      <div style={{ fontWeight: 'bold', marginBottom: 3, fontSize: '13px', letterSpacing: '0.5px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {!song.available && <span style={{ opacity: 0.5 }}>🔒</span>}
+                        {song.title}
                       </div>
-                      <div style={{ fontSize: '10px', opacity: 0.7 }}>
+                      <div style={{ fontSize: '11px', opacity: 0.6 }}>
                         {song.artist}
                       </div>
                     </button>
@@ -298,14 +337,13 @@ export function SongBank({ onSelectSong }) {
                     {/* Difficulty selection buttons - shown when song is selected */}
                     {selectedSong?.id === song.id && (
                       <div style={{
-                        border: '1px solid #c0c0c0',
+                        border: '1px solid rgba(255, 255, 255, 0.1)',
                         borderTop: 'none',
-                        borderRadius: '0 0 4px 4px',
-                        background: 'linear-gradient(180deg, #f8f8f8 0%, #f0f0f0 100%)',
+                        borderRadius: '0 0 6px 6px',
+                        background: 'rgba(255, 255, 255, 0.05)',
                         padding: '8px',
                         display: 'flex',
-                        flexDirection: 'column',
-                        gap: '4px'
+                        gap: '8px'
                       }}>
                         {/* Easy Button */}
                         <button
@@ -314,17 +352,27 @@ export function SongBank({ onSelectSong }) {
                             setSelectedSong(null);
                           }}
                           style={{
-                            padding: '6px 12px',
-                            background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
-                            color: '#333',
-                            border: '1px solid #b0b0b0',
+                            flex: 1,
+                            padding: '10px 12px',
+                            background: 'linear-gradient(135deg, #c1fba4 0%, #a8e6cf 100%)',
+                            color: '#1a3a1a',
+                            border: '2px solid rgba(0, 0, 0, 0.2)',
                             borderRadius: 4,
                             cursor: 'pointer',
                             fontWeight: 'bold',
-                            fontSize: '10px',
-                            fontFamily: 'Arial, sans-serif',
-                            textShadow: '0 1px 0 rgba(255,255,255,0.8)',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)'
+                            fontSize: '12px',
+                            fontFamily: 'ByteBounce, sans-serif',
+                            letterSpacing: '1px',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4), 0 0 15px rgba(168, 230, 207, 0.4)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
                           }}
                         >
                           EASY
@@ -337,17 +385,27 @@ export function SongBank({ onSelectSong }) {
                             setSelectedSong(null);
                           }}
                           style={{
-                            padding: '6px 12px',
-                            background: 'linear-gradient(180deg, #ffffff 0%, #e8e8e8 50%, #d8d8d8 100%)',
-                            color: '#333',
-                            border: '1px solid #b0b0b0',
+                            flex: 1,
+                            padding: '10px 12px',
+                            background: 'linear-gradient(135deg, #ffd1dc 0%, #ffb6c1 100%)',
+                            color: '#3a1a2a',
+                            border: '2px solid rgba(0, 0, 0, 0.2)',
                             borderRadius: 4,
                             cursor: 'pointer',
                             fontWeight: 'bold',
-                            fontSize: '10px',
-                            fontFamily: 'Arial, sans-serif',
-                            textShadow: '0 1px 0 rgba(255,255,255,0.8)',
-                            boxShadow: '0 1px 2px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)'
+                            fontSize: '12px',
+                            fontFamily: 'ByteBounce, sans-serif',
+                            letterSpacing: '1px',
+                            transition: 'all 0.2s',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-1px)';
+                            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.4), 0 0 15px rgba(255, 182, 193, 0.4)';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.3)';
                           }}
                         >
                           HARD
@@ -359,7 +417,8 @@ export function SongBank({ onSelectSong }) {
               </div>
             )}
           </div>
-        ))}
+        );
+        })}
       </div>
       </div>
     </>

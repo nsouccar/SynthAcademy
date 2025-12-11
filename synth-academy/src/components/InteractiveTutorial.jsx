@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { tutorialPresets } from '../tutorialPresets';
+import { tutorialPresets } from '../tutorialGenerator';
 
 /**
  * InteractiveTutorial - "Fix the synth" style tutorial
@@ -18,33 +18,38 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
 
   // Helper to get random value for a parameter - wrapped in useCallback to prevent infinite loops
   const getRandomParameterValue = useCallback((nodeId, paramName, correctValue) => {
-    // Define parameter ranges for randomization
-    const paramRanges = {
-      'tutorial-sawtooth': {
-        detune: { min: -50, max: 50 },
-        octaveOffset: { min: -2, max: 2, step: 1 },
-        unisonVoices: { min: 1, max: 7, step: 1 },
-        unisonSpread: { min: 0, max: 50, step: 1 }
-      },
-      'tutorial-envelope': {
-        delay: { min: 0, max: 2 },
-        attack: { min: 0.001, max: 2 },
-        hold: { min: 0, max: 2 },
-        decay: { min: 0.001, max: 3 },
-        sustain: { min: 0, max: 1 },
-        release: { min: 0.001, max: 5 }
-      },
-      'tutorial-reverb': {
-        wet: { min: 0, max: 1 },
-        decay: { min: 0.1, max: 10 },
-        preDelay: { min: 0, max: 0.1 }
-      }
+    // Define parameter ranges for randomization - generic by parameter name
+    const paramRangesByParam = {
+      // Oscillator params (works for all oscillator types)
+      detune: { min: -50, max: 50 },
+      octaveOffset: { min: -2, max: 2, step: 1 },
+      unisonVoices: { min: 1, max: 7, step: 1 },
+      unisonSpread: { min: 0, max: 50, step: 1 },
+      pulseWidth: { min: 0.1, max: 0.9 },
+      // Envelope params
+      delay: { min: 0, max: 2 },
+      attack: { min: 0.001, max: 2 },
+      hold: { min: 0, max: 2 },
+      decay: { min: 0.001, max: 10 },
+      sustain: { min: 0, max: 1 },
+      release: { min: 0.001, max: 5 },
+      // Effect params
+      wet: { min: 0, max: 1 },
+      preDelay: { min: 0, max: 0.1 },
+      // Filter params
+      frequency: { min: 0.1, max: 0.9 },
+      resonance: { min: 0, max: 1 },
+      // Chorus params
+      depth: { min: 0, max: 1 },
+      delayTime: { min: 0.5, max: 10 },
+      // Distortion params
+      distortion: { min: 0, max: 1 },
+      // Delay effect params
+      feedback: { min: 0, max: 0.9 }
     };
 
-    const nodeRanges = paramRanges[nodeId];
-    if (!nodeRanges || !nodeRanges[paramName]) return undefined;
-
-    const range = nodeRanges[paramName];
+    const range = paramRangesByParam[paramName];
+    if (!range) return undefined;
 
     // Generate random values until we get one that's different from the correct value
     let randomValue;
@@ -228,8 +233,8 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
           filter: isBlurred ? 'blur(8px) hue-rotate(0deg) saturate(3)' : 'none',
           opacity: isBlurred ? 0.7 : 1,
           transition: 'all 0.3s ease',
-          border: isFocus ? '3px solid #4CAF50' : undefined,
-          boxShadow: isFocus ? '0 0 20px rgba(76, 175, 80, 0.5)' : undefined,
+          border: isFocus ? '3px solid #4169E1' : undefined,
+          boxShadow: isFocus ? '0 0 20px rgba(65, 105, 225, 0.5)' : undefined,
           animation: isBlurred ? 'rainbow-blur 3s linear infinite' : undefined
         },
         draggable: true,
@@ -360,8 +365,8 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
           filter: isBlurred ? 'blur(8px) hue-rotate(0deg) saturate(3)' : 'none',
           opacity: isBlurred ? 0.7 : 1,
           transition: 'all 0.3s ease',
-          border: isFocus ? '3px solid #4CAF50' : undefined,
-          boxShadow: isFocus ? '0 0 20px rgba(76, 175, 80, 0.5)' : undefined,
+          border: isFocus ? '3px solid #4169E1' : undefined,
+          boxShadow: isFocus ? '0 0 20px rgba(65, 105, 225, 0.5)' : undefined,
           animation: isBlurred ? 'rainbow-blur 3s linear infinite' : undefined
         },
         draggable: true,
@@ -424,8 +429,8 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
             blurredParams: step.blurAllParameters ? allParamNames : []
           },
           style: {
-            border: '3px solid #4CAF50',
-            boxShadow: '0 0 20px rgba(76, 175, 80, 0.5)'
+            border: '3px solid #4169E1',
+            boxShadow: '0 0 20px rgba(65, 105, 225, 0.5)'
           },
           draggable: true,
           selectable: true,
@@ -433,6 +438,17 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
         };
 
         setNodes((nds) => [...nds, tutorialNode]);
+
+        // Auto-connect the edges for this node from the preset
+        const nodeId = step.requiredNodeId;
+        const edgesToAdd = (preset.initialEdges || []).filter(edge =>
+          edge.source === nodeId || edge.target === nodeId
+        );
+        if (edgesToAdd.length > 0) {
+          console.log('Tutorial - Auto-connecting edges for node:', nodeId, edgesToAdd);
+          setEdges((eds) => [...eds, ...edgesToAdd]);
+        }
+
         setTutorialNodeIds(prev => {
           const newSet = new Set([...prev, step.requiredNodeId]);
           // Don't auto-advance - let user click the arrow to continue
@@ -460,6 +476,23 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
 
         console.log('Tutorial - Adding experiment node:', experimentNode);
         setNodes((nds) => [...nds, experimentNode]);
+
+        // Auto-connect the experiment node using the same edges as the required node
+        // but with the experiment node's ID
+        const requiredNodeId = step.requiredNodeId;
+        const experimentEdges = (preset.initialEdges || [])
+          .filter(edge => edge.source === requiredNodeId || edge.target === requiredNodeId)
+          .map(edge => ({
+            ...edge,
+            id: edge.id.replace(requiredNodeId, experimentNode.id),
+            source: edge.source === requiredNodeId ? experimentNode.id : edge.source,
+            target: edge.target === requiredNodeId ? experimentNode.id : edge.target
+          }));
+        if (experimentEdges.length > 0) {
+          console.log('Tutorial - Auto-connecting experiment edges:', experimentEdges);
+          setEdges((eds) => [...eds, ...experimentEdges]);
+        }
+
         // Add to tutorialNodeIds so it's recognized in the filter
         setTutorialNodeIds(prev => new Set([...prev, experimentNode.id]));
       }
@@ -471,7 +504,7 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
       console.log('Tutorial - Removing tutorialNodeAdd event listener');
       window.removeEventListener('tutorialNodeAdd', handleNodeAdd);
     };
-  }, [currentStep, initialized, preset, setNodes, setTutorialNodeIds, handleNext]);
+  }, [currentStep, initialized, preset, setNodes, setEdges, setTutorialNodeIds, handleNext]);
 
   // Handle connections during tutorial
   useEffect(() => {
@@ -593,7 +626,7 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
       {/* Simple Instruction Text with Arrow */}
       <div style={{
         position: 'fixed',
-        bottom: '40px',
+        bottom: '100px',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 1000,

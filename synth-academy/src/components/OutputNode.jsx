@@ -75,7 +75,7 @@ export function OutputNode({ id }) {
                 marginTop: 6,
                 fontSize: '1.5em',
             }}>
-                🔊
+                OUT
             </div>
         </div>
     );

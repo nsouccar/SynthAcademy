@@ -173,7 +173,7 @@ export function TVNode({ id, data }) {
         textShadow: isActive ? '0 0 10px rgba(0, 255, 0, 0.5)' : 'none',
         transition: 'all 0.3s ease'
       }}>
-        📺 TV MONITOR
+        TV MONITOR
       </div>
 
       {/* Waveform Display - Retro TV Style */}

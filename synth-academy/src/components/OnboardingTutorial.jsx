@@ -519,7 +519,7 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
           left: '50%',
           transform: 'translateX(-50%)',
           background: 'linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%)',
-          border: '3px solid #4CAF50',
+          border: '3px solid #4169E1',
           borderRadius: '16px',
           padding: '32px',
           maxWidth: '500px',
@@ -531,9 +531,9 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
       >
           <h2
             style={{
-              margin: '0 0 16px 0',
-              fontSize: '28px',
-              color: '#4CAF50',
+              margin: '0 0 10px 0',
+              fontSize: '18px',
+              color: '#4169E1',
               fontFamily: 'StarCrush, sans-serif',
               textShadow: '2px 2px 0 rgba(0,0,0,0.1)'
             }}
@@ -542,10 +542,10 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
           </h2>
           <p
             style={{
-              margin: '0 0 24px 0',
-              fontSize: '18px',
+              margin: '0 0 16px 0',
+              fontSize: '12px',
               color: '#333',
-              lineHeight: '1.6',
+              lineHeight: '1.5',
               fontFamily: 'Arial, sans-serif'
             }}
           >
@@ -560,7 +560,7 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
                 style={{
                   flex: 1,
                   height: '4px',
-                  background: index <= currentStep ? '#4CAF50' : '#ddd',
+                  background: index <= currentStep ? '#4169E1' : '#ddd',
                   borderRadius: '2px',
                   transition: 'background 0.3s'
                 }}
@@ -592,7 +592,7 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
               onClick={handleNext}
               style={{
                 padding: '10px 20px',
-                background: '#4CAF50',
+                background: '#4169E1',
                 border: 'none',
                 borderRadius: '8px',
                 color: '#fff',
@@ -600,7 +600,7 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
                 fontFamily: 'Arial, sans-serif',
                 fontWeight: 'bold',
                 fontSize: '14px',
-                boxShadow: '0 4px 12px rgba(76, 175, 80, 0.3)'
+                boxShadow: '0 4px 12px rgba(65, 105, 225, 0.3)'
               }}
             >
               {currentStep < steps.length - 1 ? 'Next' : 'Got it!'}
@@ -647,47 +647,47 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
       <style>{`
         @keyframes onboarding-flash-animation {
           0%, 100% {
-            box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.7);
             transform: scale(1);
           }
           50% {
-            box-shadow: 0 0 20px 10px rgba(76, 175, 80, 0.3);
+            box-shadow: 0 0 20px 10px rgba(65, 105, 225, 0.3);
             transform: scale(1.05);
           }
         }
 
         .onboarding-flash {
           animation: onboarding-flash-animation 1.5s ease-in-out infinite !important;
-          border-color: #4CAF50 !important;
+          border-color: #4169E1 !important;
         }
 
         @keyframes onboarding-flash-handle-animation {
           0%, 100% {
-            box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.9);
+            box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.9);
             transform: scale(1);
           }
           50% {
-            box-shadow: 0 0 30px 15px rgba(76, 175, 80, 0.5);
+            box-shadow: 0 0 30px 15px rgba(65, 105, 225, 0.5);
             transform: scale(1.5);
           }
         }
 
         .onboarding-flash-handle {
           animation: onboarding-flash-handle-animation 1.2s ease-in-out infinite !important;
-          background: #4CAF50 !important;
+          background: #4169E1 !important;
           z-index: 10001 !important;
         }
 
         @keyframes onboarding-flash-edge-animation {
           0%, 100% {
-            stroke: #4CAF50;
+            stroke: #4169E1;
             stroke-width: 2;
-            filter: drop-shadow(0 0 0 rgba(76, 175, 80, 0.7));
+            filter: drop-shadow(0 0 0 rgba(65, 105, 225, 0.7));
           }
           50% {
-            stroke: #66BB6A;
+            stroke: #5a7fd4;
             stroke-width: 4;
-            filter: drop-shadow(0 0 15px rgba(76, 175, 80, 0.9));
+            filter: drop-shadow(0 0 15px rgba(65, 105, 225, 0.9));
           }
         }
 
@@ -698,12 +698,12 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
 
         @keyframes pulse-border {
           0%, 100% {
-            border-color: #4CAF50;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 20px rgba(76, 175, 80, 0.6);
+            border-color: #4169E1;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 20px rgba(65, 105, 225, 0.6);
           }
           50% {
-            border-color: #66BB6A;
-            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 40px rgba(76, 175, 80, 0.8);
+            border-color: #5a7fd4;
+            box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.7), 0 0 40px rgba(65, 105, 225, 0.8);
           }
         }
 
@@ -740,18 +740,18 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
         }
 
         .onboarding-highlight-node {
-          border: 3px solid #4CAF50 !important;
-          box-shadow: 0 0 20px rgba(76, 175, 80, 0.6) !important;
+          border: 3px solid #4169E1 !important;
+          box-shadow: 0 0 20px rgba(65, 105, 225, 0.6) !important;
           transition: all 0.3s ease !important;
         }
 
         @keyframes onboarding-flash-filter-param-animation {
           0%, 100% {
-            box-shadow: 0 0 0 0 rgba(76, 175, 80, 0.7);
+            box-shadow: 0 0 0 0 rgba(65, 105, 225, 0.7);
             transform: scale(1);
           }
           50% {
-            box-shadow: 0 0 15px 8px rgba(76, 175, 80, 0.4);
+            box-shadow: 0 0 15px 8px rgba(65, 105, 225, 0.4);
             transform: scale(1.02);
           }
         }
@@ -763,12 +763,12 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
 
         @keyframes onboarding-highlight-song-bank-animation {
           0%, 100% {
-            box-shadow: 0 0 20px 5px rgba(76, 175, 80, 0.8);
-            border-color: #4CAF50;
+            box-shadow: 0 0 20px 5px rgba(65, 105, 225, 0.8);
+            border-color: #4169E1;
           }
           50% {
-            box-shadow: 0 0 30px 10px rgba(76, 175, 80, 0.6);
-            border-color: #66BB6A;
+            box-shadow: 0 0 30px 10px rgba(65, 105, 225, 0.6);
+            border-color: #5a7fd4;
           }
         }
 
@@ -779,18 +779,18 @@ export function OnboardingTutorial({ onComplete, onSkip }) {
 
         @keyframes onboarding-highlight-effects-animation {
           0%, 100% {
-            box-shadow: 0 0 20px 5px rgba(76, 175, 80, 0.8);
+            box-shadow: 0 0 20px 5px rgba(65, 105, 225, 0.8);
             transform: scale(1);
           }
           50% {
-            box-shadow: 0 0 30px 10px rgba(76, 175, 80, 0.6);
+            box-shadow: 0 0 30px 10px rgba(65, 105, 225, 0.6);
             transform: scale(1.05);
           }
         }
 
         .onboarding-highlight-effects {
           animation: onboarding-highlight-effects-animation 1.5s ease-in-out infinite !important;
-          border-color: #4CAF50 !important;
+          border-color: #4169E1 !important;
         }
       `}</style>
     </>
@@ -810,7 +810,7 @@ export function OnboardingInfoButton({ onClick }) {
         left: '20px', // Position in upper left corner
         padding: '12px 24px',
         borderRadius: '12px',
-        background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+        background: 'linear-gradient(135deg, #4169E1 0%, #3457b2 100%)',
         border: '3px solid #fff',
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
         cursor: 'pointer',
@@ -827,7 +827,7 @@ export function OnboardingInfoButton({ onClick }) {
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.transform = 'scale(1.05)';
-        e.currentTarget.style.boxShadow = '0 6px 16px rgba(76, 175, 80, 0.5)';
+        e.currentTarget.style.boxShadow = '0 6px 16px rgba(65, 105, 225, 0.5)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = 'scale(1)';
@@ -836,6 +836,50 @@ export function OnboardingInfoButton({ onClick }) {
       title="Show tutorial"
     >
       TUTORIAL
+    </button>
+  );
+}
+
+/**
+ * RecipesButton - Button to toggle song bank (learn famous synth recipes)
+ */
+export function RecipesButton({ onClick, isOpen }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        position: 'fixed',
+        bottom: '20px',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        padding: '12px 24px',
+        borderRadius: '12px',
+        background: 'linear-gradient(135deg, #4169E1 0%, #3457b2 100%)',
+        border: '3px solid #fff',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        cursor: 'pointer',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: '14px',
+        color: '#fff',
+        fontWeight: 'bold',
+        zIndex: 1000,
+        transition: 'all 0.3s ease',
+        fontFamily: 'StarCrush, sans-serif',
+        letterSpacing: '1px'
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = 'translateX(-50%) scale(1.05)';
+        e.currentTarget.style.boxShadow = '0 6px 16px rgba(65, 105, 225, 0.5)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = 'translateX(-50%) scale(1)';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.3)';
+      }}
+      title="Learn famous synth recipes"
+    >
+      {isOpen ? '✕ CLOSE SONG BANK' : '♪ LEARN FAMOUS SYNTH RECIPES'}
     </button>
   );
 }

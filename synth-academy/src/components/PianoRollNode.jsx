@@ -663,37 +663,229 @@ export function PianoRollNode({ id, data }) {
         };
     }, []);
 
-    // Setup reference synth for tutorial mode (correct "Better Off Alone" sound)
+    // Setup reference synth for tutorial mode (dynamic oscillator and multiple effects)
+    // This creates a custom synth that supports unison voices with spread detune
     useEffect(() => {
         if (!data?.compactMode || !data?.referenceParams) return;
 
-        // Create the reference synth chain: Sawtooth -> Envelope -> Reverb -> Output
-        const reverb = new Tone.Reverb({
-            decay: data.referenceParams.reverb?.decay || 3.0,
-            preDelay: data.referenceParams.reverb?.preDelay || 0.01,
-            wet: data.referenceParams.reverb?.wet || 0.2
-        }).toDestination();
+        const oscType = data.referenceParams.oscillator?.type || 'sawtooth';
+        const oscParams = data.referenceParams.oscillator || {};
 
-        reverb.generate();
+        // Unison parameters
+        const unisonVoices = oscParams.unisonVoices || 1;
+        const unisonSpread = oscParams.unisonSpread || 0;
+        const baseDetune = oscParams.detune || 0;
+        const octaveOffset = oscParams.octaveOffset || 0;
 
-        const synth = new Tone.PolySynth(Tone.Synth, {
-            oscillator: {
-                type: 'sawtooth'
-            },
-            envelope: {
-                attack: data.referenceParams.envelope?.attack || 0.01,
-                decay: data.referenceParams.envelope?.decay || 0.1,
-                sustain: data.referenceParams.envelope?.sustain || 1.0,
-                release: data.referenceParams.envelope?.release || 0.02
-            },
-            volume: -6
-        }).connect(reverb);
+        // Support both single effect (effectType) and multiple effects (effects array)
+        let effectsConfig = [];
+        if (data.referenceParams.effects && data.referenceParams.effects.length > 0) {
+            effectsConfig = data.referenceParams.effects;
+        } else {
+            // Fallback to single effect for backward compatibility
+            const effectType = data.referenceParams.effectType || 'reverb';
+            const effectParams = data.referenceParams[effectType] || {};
+            effectsConfig = [{ type: effectType, ...effectParams }];
+        }
+
+        // Helper function to create a single effect
+        const createEffect = (config) => {
+            const { type, ...params } = config;
+            switch (type) {
+                case 'chorus':
+                    const chorus = new Tone.Chorus({
+                        frequency: params.frequency || 1.5,
+                        delayTime: params.delayTime || 3.5,
+                        depth: params.depth || 0.4,
+                        wet: params.wet || 0.3
+                    });
+                    chorus.start();
+                    return chorus;
+                case 'delay':
+                    return new Tone.FeedbackDelay({
+                        delayTime: params.delayTime || 0.25,
+                        feedback: params.feedback || 0.3,
+                        wet: params.wet || 0.3
+                    });
+                case 'distortion':
+                    return new Tone.Distortion({
+                        distortion: params.distortion || 0.4,
+                        wet: params.wet || 0.5
+                    });
+                case 'filter':
+                    // Convert normalized frequency (0-1) to Hz if needed
+                    let freq = params.frequency || 1000;
+                    if (freq <= 1) {
+                        // Normalize: 0 = 20Hz, 1 = 20kHz (log scale)
+                        freq = 20 * Math.pow(1000, freq);
+                    }
+                    return new Tone.Filter({
+                        frequency: freq,
+                        type: params.type || 'lowpass',
+                        Q: (params.resonance || 0.5) * 20 // Scale resonance to Q
+                    });
+                case 'reverb':
+                default:
+                    const reverb = new Tone.Reverb({
+                        decay: params.decay || 3.0,
+                        preDelay: params.preDelay || 0.01,
+                        wet: params.wet || 0.2
+                    });
+                    reverb.generate();
+                    return reverb;
+            }
+        };
+
+        // Create all effects
+        const effects = effectsConfig.map(config => createEffect(config));
+
+        // Chain effects: effect1 -> effect2 -> ... -> destination
+        if (effects.length > 0) {
+            // Connect last effect to destination
+            effects[effects.length - 1].toDestination();
+
+            // Chain effects in reverse order (so first effect is first in chain)
+            for (let i = effects.length - 2; i >= 0; i--) {
+                effects[i].connect(effects[i + 1]);
+            }
+        }
+
+        // Map oscillator type to Tone.js type
+        let toneOscType = oscType;
+        if (oscType === 'pulse') {
+            toneOscType = 'pulse';
+        }
+
+        // Create a custom PolySynth factory that supports unison
+        // We create multiple synths per voice and mix them together
+        const envelopeParams = {
+            attack: data.referenceParams.envelope?.attack || 0.01,
+            decay: data.referenceParams.envelope?.decay || 0.1,
+            sustain: data.referenceParams.envelope?.sustain ?? 1.0,
+            release: data.referenceParams.envelope?.release || 0.02
+        };
+
+        // Calculate volume compensation for unison (more voices = lower volume per voice)
+        const volumeCompensation = unisonVoices > 1 ? -3 * Math.log2(unisonVoices) : 0;
+        const baseVolume = -6 + volumeCompensation;
+
+        // Create a custom synth class that handles unison internally
+        // Architecture: oscillators -> merger -> envelope -> effects
+        // (All oscillators share ONE envelope, matching VoiceManager)
+        class UnisonSynth {
+            constructor() {
+                this.activeNotes = new Map();
+            }
+
+            triggerAttackRelease(note, duration, time, velocity = 1) {
+                const freq = Tone.Frequency(note).toFrequency();
+                // Apply octave offset
+                const adjustedFreq = freq * Math.pow(2, octaveOffset);
+
+                // Create merger to combine all unison voices
+                const merger = new Tone.Gain(1);
+
+                // Create ONE envelope for all voices (this is the key difference!)
+                const envelope = new Tone.AmplitudeEnvelope(envelopeParams);
+
+                // Connect: merger -> envelope -> effects/destination
+                merger.connect(envelope);
+                if (effects.length > 0) {
+                    envelope.connect(effects[0]);
+                } else {
+                    envelope.toDestination();
+                }
+
+                // Create oscillators for each unison voice
+                const oscillators = [];
+
+                for (let i = 0; i < unisonVoices; i++) {
+                    // Create oscillator
+                    let osc;
+                    if (oscType === 'pulse') {
+                        osc = new Tone.PulseOscillator(adjustedFreq, oscParams.pulseWidth || 0.5);
+                    } else {
+                        osc = new Tone.Oscillator(adjustedFreq, toneOscType);
+                    }
+
+                    // Apply base detune
+                    osc.detune.value = baseDetune;
+
+                    // Apply spread detune for unison
+                    if (unisonVoices > 1) {
+                        const spreadOffset = ((i / (unisonVoices - 1)) - 0.5) * 2 * unisonSpread;
+                        osc.detune.value += spreadOffset;
+                    }
+
+                    // Set volume with velocity
+                    osc.volume.value = baseVolume + (velocity - 1) * 10;
+
+                    // Connect oscillator -> merger
+                    osc.connect(merger);
+                    osc.start(time);
+
+                    oscillators.push(osc);
+                }
+
+                // Trigger the single envelope
+                envelope.triggerAttack(time);
+
+                // Schedule release
+                const releaseTime = time + Tone.Time(duration).toSeconds();
+                envelope.triggerRelease(releaseTime);
+
+                // Schedule cleanup after release completes
+                const cleanupTime = releaseTime + envelopeParams.release + 0.1;
+                Tone.Transport.scheduleOnce(() => {
+                    oscillators.forEach(osc => {
+                        try {
+                            osc.stop();
+                            osc.disconnect();
+                            osc.dispose();
+                        } catch (e) {}
+                    });
+                    try {
+                        envelope.disconnect();
+                        envelope.dispose();
+                    } catch (e) {}
+                    try {
+                        merger.disconnect();
+                        merger.dispose();
+                    } catch (e) {}
+                }, cleanupTime);
+            }
+
+            dispose() {
+                // Cleanup any remaining resources
+                this.activeNotes.forEach(({ oscillators, envelope, merger }) => {
+                    oscillators.forEach(osc => {
+                        try { osc.stop(); osc.dispose(); } catch (e) {}
+                    });
+                    try { envelope.dispose(); } catch (e) {}
+                    try { merger.dispose(); } catch (e) {}
+                });
+                this.activeNotes.clear();
+            }
+        }
+
+        const synth = new UnisonSynth();
 
         referenceSynthRef.current = synth;
+        // Store effect refs for cleanup
+        referenceSynthRef.current._effectRefs = effects;
+
+        console.log('Reference synth created with unison:', {
+            oscType,
+            unisonVoices,
+            unisonSpread,
+            baseDetune,
+            octaveOffset,
+            envelope: envelopeParams
+        });
 
         return () => {
             synth.dispose();
-            reverb.dispose();
+            effects.forEach(effect => effect.dispose());
         };
     }, [data?.compactMode, data?.referenceParams]);
 
@@ -1095,25 +1287,27 @@ export function PianoRollNode({ id, data }) {
             <div
                 className="nodrag nopan"
                 style={{
-                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                    borderRadius: 12,
-                    border: '2px solid #4CAF50',
-                    padding: '16px 24px',
+                    background: '#1a1a1a',
+                    border: '2px solid #4169E1',
+                    borderRadius: 6,
+                    padding: 12,
+                    minWidth: 180,
                     color: '#fff',
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+                    fontSize: '0.85em',
                     display: 'flex',
                     flexDirection: 'column',
-                    gap: 12,
-                    minWidth: 250
+                    boxShadow: '0 0 10px rgba(65, 105, 225, 0.3)'
                 }}
             >
+                {/* Title */}
                 <div style={{
-                    fontSize: '14px',
                     fontWeight: 'bold',
+                    marginBottom: 8,
                     textAlign: 'center',
-                    marginBottom: 4
+                    fontSize: '0.9em',
+                    color: '#4169E1'
                 }}>
-                    🎵 Tutorial Melody
+                    MELODY
                 </div>
 
                 {/* Your synth button */}
@@ -1123,21 +1317,26 @@ export function PianoRollNode({ id, data }) {
                         setIsPlaying(!isPlaying);
                     }}
                     style={{
-                        padding: '12px 24px',
-                        background: isPlaying ? '#f44336' : '#4CAF50',
+                        width: '100%',
+                        padding: '8px 12px',
+                        background: isPlaying ? '#f44336' : '#333',
                         color: '#fff',
-                        border: 'none',
-                        borderRadius: 8,
+                        border: '1px solid #555',
+                        borderRadius: 4,
                         cursor: 'pointer',
                         fontWeight: 'bold',
-                        fontSize: '14px',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                        fontSize: '0.85em',
+                        marginBottom: 6,
                         transition: 'all 0.2s'
                     }}
-                    onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-                    onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                    onMouseOver={(e) => {
+                        if (!isPlaying) e.target.style.background = '#444';
+                    }}
+                    onMouseOut={(e) => {
+                        if (!isPlaying) e.target.style.background = '#333';
+                    }}
                 >
-                    {isPlaying ? '⏸ Stop Your Synth' : '▶ Play Your Synth'}
+                    {isPlaying ? '■ Stop' : '▶ Play Your Synth'}
                 </button>
 
                 {/* Reference synth button (only show if referenceParams provided) */}
@@ -1148,28 +1347,34 @@ export function PianoRollNode({ id, data }) {
                             setIsPlayingReference(!isPlayingReference);
                         }}
                         style={{
-                            padding: '12px 24px',
-                            background: isPlayingReference ? '#f44336' : '#FF9800',
+                            width: '100%',
+                            padding: '8px 12px',
+                            background: isPlayingReference ? '#f44336' : '#333',
                             color: '#fff',
-                            border: 'none',
-                            borderRadius: 8,
+                            border: '1px solid #555',
+                            borderRadius: 4,
                             cursor: 'pointer',
                             fontWeight: 'bold',
-                            fontSize: '14px',
-                            boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                            fontSize: '0.85em',
+                            marginBottom: 6,
                             transition: 'all 0.2s'
                         }}
-                        onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
-                        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+                        onMouseOver={(e) => {
+                            if (!isPlayingReference) e.target.style.background = '#444';
+                        }}
+                        onMouseOut={(e) => {
+                            if (!isPlayingReference) e.target.style.background = '#333';
+                        }}
                     >
-                        {isPlayingReference ? '⏸ Stop Reference' : '🎯 Play Reference'}
+                        {isPlayingReference ? '■ Stop' : '▶ Play Reference'}
                     </button>
                 )}
 
                 <div style={{
-                    fontSize: '11px',
+                    fontSize: '0.65em',
                     textAlign: 'center',
-                    opacity: 0.8
+                    color: '#999',
+                    marginTop: 4
                 }}>
                     {notes.length} notes • {tempo} BPM
                 </div>
@@ -1219,7 +1424,7 @@ export function PianoRollNode({ id, data }) {
                     }}
                     title="Drag to move sequencer"
                 >
-                    ⋮⋮ SEQUENCER v2
+                    SEQUENCER v2
                 </strong>
 
                 <div className="nodrag nopan" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -1366,7 +1571,7 @@ export function PianoRollNode({ id, data }) {
                         fontSize: '12px'
                     }}
                 >
-                    {isPlaying ? '⏸ Stop' : '▶ Play'}
+                    {isPlaying ? 'Stop' : 'Play'}
                 </button>
 
                 <button
@@ -1382,7 +1587,7 @@ export function PianoRollNode({ id, data }) {
                         fontSize: '12px'
                     }}
                 >
-                    {isRecording ? '⏺ Recording...' : '⏺ Record'}
+                    {isRecording ? 'Recording...' : 'Record'}
                 </button>
 
                 <button
@@ -1415,7 +1620,7 @@ export function PianoRollNode({ id, data }) {
                         fontWeight: 'bold',
                     }}
                 >
-                    📁 Import MIDI
+                    Import MIDI
                     <input
                         type="file"
                         accept=".mid,.midi"
@@ -1437,7 +1642,7 @@ export function PianoRollNode({ id, data }) {
                         fontWeight: 'bold',
                     }}
                 >
-                    💾 Export MIDI
+                    Export MIDI
                 </button>
 
                 <button
@@ -1453,7 +1658,7 @@ export function PianoRollNode({ id, data }) {
                         fontWeight: 'bold',
                     }}
                 >
-                    🎵 {metronomeEnabled ? 'Click: ON' : 'Click: OFF'}
+                    {metronomeEnabled ? 'Click: ON' : 'Click: OFF'}
                 </button>
 
                 <label style={{
@@ -1501,7 +1706,7 @@ export function PianoRollNode({ id, data }) {
                 color: isFocused ? '#0af' : '#666',
                 textAlign: 'center'
             }}>
-                {isFocused ? '🎹 FOCUSED: ' : ''}Click to add • Drag to move • Alt+Drag to select • Cmd/Ctrl+Click for multi-select • Drag edges to resize • Shift+Drag to pan • Delete to remove • {notes.length} notes ({selectedNotes.size} selected)
+                {isFocused ? 'FOCUSED: ' : ''}Click to add • Drag to move • Alt+Drag to select • Cmd/Ctrl+Click for multi-select • Drag edges to resize • Shift+Drag to pan • Delete to remove • {notes.length} notes ({selectedNotes.size} selected)
             </div>
 
             {/* Vertical resize handle */}

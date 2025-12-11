@@ -26,12 +26,20 @@ export const tutorialPresets = {
           compactMode: true, // Show only play button in tutorial mode
           referenceParams: {
             // Correct "Better Off Alone" synth parameters
+            oscillator: {
+              type: 'sawtooth',
+              detune: 0,
+              octaveOffset: 0,
+              unisonVoices: 1,
+              unisonSpread: 50
+            },
             envelope: {
               attack: 0.01,
               decay: 0.1,
               sustain: 1.0,
               release: 0.02
             },
+            effectType: 'reverb',
             reverb: {
               wet: 0.2,
               decay: 3.0,

@@ -1,15 +1,15 @@
 import React, { useRef, useMemo, useState } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { useGLTF } from '@react-three/drei';
+import { Environment } from '@react-three/drei';
 
 function FallingBalloon({ initialPosition, audioLevel, fallSpeed, driftSpeed }) {
-  const meshRef = useRef();
-  const { scene } = useGLTF('/blurry+face+3d+model.glb');
+  const groupRef = useRef();
+  const stringRef = useRef();
   const [position, setPosition] = useState(initialPosition);
   const startTimeRef = useRef(Date.now());
 
-  useFrame(({ clock }) => {
-    if (meshRef.current) {
+  useFrame(() => {
+    if (groupRef.current) {
       const elapsed = (Date.now() - startTimeRef.current) / 1000;
 
       // Fall from top to bottom
@@ -28,30 +28,62 @@ function FallingBalloon({ initialPosition, audioLevel, fallSpeed, driftSpeed }) 
           : 5 + (Math.random() * 15);   // 5 to 20
         setPosition([newX, 15, initialPosition[2]]);
       } else {
-        meshRef.current.position.set(
+        groupRef.current.position.set(
           initialPosition[0] + drift,
           newY,
           initialPosition[2]
         );
       }
 
-      // Slow rotation
-      meshRef.current.rotation.y += 0.01;
-      meshRef.current.rotation.x = Math.sin(elapsed * 0.5) * 0.2;
+      // Slow rotation for balloon
+      groupRef.current.rotation.y += 0.01;
+      groupRef.current.rotation.x = Math.sin(elapsed * 0.5) * 0.2;
 
-      // Scale with audio level (base size 2-5 based on audio)
-      const baseScale = 2.5;
-      const scale = baseScale + (audioLevel * 2.5);
-      meshRef.current.scale.set(scale, scale, scale);
+      // Sway the string independently - pendulum motion
+      if (stringRef.current) {
+        stringRef.current.rotation.x = Math.sin(elapsed * 2.5) * 0.3;
+        stringRef.current.rotation.z = Math.cos(elapsed * 1.8) * 0.2;
+      }
+
+      // Scale with audio level (smaller balloons)
+      const baseScale = 0.8;
+      const scale = baseScale + (audioLevel * 0.5);
+      groupRef.current.scale.set(scale, scale, scale);
     }
   });
 
   return (
-    <primitive
-      ref={meshRef}
-      object={scene.clone()}
-      position={position}
-    />
+    <group ref={groupRef} position={position}>
+      {/* Balloon - glossy rubber look */}
+      <mesh>
+        <sphereGeometry args={[1, 64, 64]} />
+        <meshPhysicalMaterial
+          color="#ff2020"
+          metalness={0.0}
+          roughness={0.15}
+          clearcoat={1.0}
+          clearcoatRoughness={0.1}
+          reflectivity={0.9}
+          envMapIntensity={1.5}
+        />
+      </mesh>
+      {/* Balloon knot */}
+      <mesh position={[0, -1.05, 0]}>
+        <sphereGeometry args={[0.12, 16, 16]} />
+        <meshPhysicalMaterial
+          color="#cc1818"
+          metalness={0.0}
+          roughness={0.3}
+        />
+      </mesh>
+      {/* String - pivots from top */}
+      <group position={[0, -1.15, 0]}>
+        <mesh ref={stringRef} position={[0, -1.2, 0]}>
+          <cylinderGeometry args={[0.02, 0.02, 2.5, 8]} />
+          <meshStandardMaterial color="#ffffff" />
+        </mesh>
+      </group>
+    </group>
   );
 }
 
@@ -77,10 +109,16 @@ export function FloatingBalloons({ audioLevel }) {
         camera={{ position: [0, 0, 10], fov: 60 }}
         style={{ background: 'transparent', pointerEvents: 'none' }}
       >
-        <ambientLight intensity={0.6} />
-        <pointLight position={[10, 10, 10]} intensity={1.5} />
-        <pointLight position={[-10, -10, -10]} intensity={0.8} color="#00ffff" />
-        <spotLight position={[0, 10, 5]} intensity={0.5} color="#ff00ff" />
+        {/* Environment for glossy reflections */}
+        <Environment preset="city" />
+
+        <ambientLight intensity={0.8} />
+        {/* Key light - creates the main highlight */}
+        <directionalLight position={[-5, 8, 5]} intensity={2} color="#ffffff" />
+        {/* Fill light */}
+        <pointLight position={[10, 5, 10]} intensity={1.0} />
+        {/* Rim light for edge definition */}
+        <pointLight position={[-10, -5, -5]} intensity={0.6} color="#ffcccc" />
 
         {balloons.map((balloon, i) => (
           <FallingBalloon
