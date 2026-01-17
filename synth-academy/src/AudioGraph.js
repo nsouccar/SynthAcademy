@@ -333,6 +333,10 @@ class AudioGraph {
         voiceManagerInstance.stopVoicesForTemplate(outputNode.id);
 
         voiceManagerInstance.registerVoiceTemplate(outputNode.id, template);
+      } else {
+        // Template is empty (broken chain) - unregister to prevent stale playback
+        console.log(`Unregistering voice template for output ${outputNode.id} (empty chain)`);
+        voiceManagerInstance.unregisterVoiceTemplate(outputNode.id);
       }
     });
 
