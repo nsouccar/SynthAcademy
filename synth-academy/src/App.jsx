@@ -343,6 +343,23 @@ function AppContent() {
     [showTutorial, nodes]
   );
 
+  // Validate connections - prevent invalid routing like oscillator → oscillator
+  const isValidConnection = useCallback((connection) => {
+    const sourceNode = nodes.find(n => n.id === connection.source);
+    const targetNode = nodes.find(n => n.id === connection.target);
+
+    // Check if both nodes are oscillators (type contains 'osc')
+    const isSourceOsc = sourceNode?.type?.toLowerCase().includes('osc');
+    const isTargetOsc = targetNode?.type?.toLowerCase().includes('osc');
+
+    // Prevent oscillator → oscillator connections
+    if (isSourceOsc && isTargetOsc) {
+      return false;
+    }
+
+    return true;
+  }, [nodes]);
+
   // Handle node changes (dragging, selection, etc.)
   const onNodesChange = useCallback(
     (changes) => setNodes((nds) => applyNodeChanges(changes, nds)),
@@ -1365,6 +1382,7 @@ function AppContent() {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          isValidConnection={isValidConnection}
           onMove={(_, viewport) => {
             setPanX(viewport.x);
             setPanY(viewport.y);
