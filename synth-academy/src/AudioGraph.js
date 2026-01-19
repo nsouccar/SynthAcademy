@@ -304,6 +304,9 @@ class AudioGraph {
 
     console.log(`Found ${outputNodes.length} output nodes`);
 
+    // Track which outputs have valid templates
+    const validOutputIds = [];
+
     // For each OutputNode, trace back to build a voice template
     outputNodes.forEach(outputNode => {
       const template = this.buildVoiceTemplateFromOutput(outputNode.id, nodes, edges);
@@ -333,6 +336,9 @@ class AudioGraph {
         voiceManagerInstance.stopVoicesForTemplate(outputNode.id);
 
         voiceManagerInstance.registerVoiceTemplate(outputNode.id, template);
+
+        // Track this as a valid output
+        validOutputIds.push(outputNode.id);
       } else {
         // Template is empty (broken chain) - unregister to prevent stale playback
         console.log(`Unregistering voice template for output ${outputNode.id} (empty chain)`);
@@ -340,9 +346,9 @@ class AudioGraph {
       }
     });
 
-    // Store the first output node ID for piano to use
-    if (outputNodes.length > 0) {
-      this.primaryVoiceTemplateId = outputNodes[0].id;
+    // Store the first VALID output node ID for piano to use
+    if (validOutputIds.length > 0) {
+      this.primaryVoiceTemplateId = validOutputIds[0];
     } else {
       this.primaryVoiceTemplateId = null;
     }
