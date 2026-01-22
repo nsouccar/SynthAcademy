@@ -18,31 +18,16 @@ class AudioGraph {
 
     // Map of node IDs to their output connections (for tracking)
     this.connections = new Map();
-
-    // Map of node IDs to their node type and metadata
-    this.nodeMetadata = new Map();
-
-    // Map of controller IDs to arrays of controlled node IDs
-    this.controlConnections = new Map();
-
-    // Event listeners for template changes
-    this.eventListeners = new Map();
   }
 
   /**
    * Register a new audio node
    * @param {string} nodeId - ReactFlow node ID
    * @param {object} audioNode - Tone.js audio object (Oscillator, Filter, etc.)
-   * @param {object} metadata - Node metadata (type, isController, etc.)
    */
-  registerNode(nodeId, audioNode, metadata = {}) {
+  registerNode(nodeId, audioNode) {
     this.audioNodes.set(nodeId, audioNode);
     this.connections.set(nodeId, new Set());
-    this.nodeMetadata.set(nodeId, metadata);
-
-    if (metadata.isController) {
-      this.controlConnections.set(nodeId, []);
-    }
   }
 
   /**
@@ -70,44 +55,22 @@ class AudioGraph {
     // Remove from tracking
     this.audioNodes.delete(nodeId);
     this.connections.delete(nodeId);
-    this.nodeMetadata.delete(nodeId);
-    this.controlConnections.delete(nodeId);
 
     // Remove any connections pointing to this node
     this.connections.forEach((targetSet) => {
       targetSet.delete(nodeId);
     });
-
-    // Remove any control connections pointing to this node
-    this.controlConnections.forEach((targets) => {
-      const index = targets.indexOf(nodeId);
-      if (index > -1) {
-        targets.splice(index, 1);
-      }
-    });
   }
 
   /**
-   * Connect two nodes (audio or control)
+   * Connect two audio nodes
    * @param {string} sourceId - Source node ID
    * @param {string} targetId - Target node ID
    */
   connect(sourceId, targetId) {
-    const sourceMetadata = this.nodeMetadata.get(sourceId);
     const source = this.audioNodes.get(sourceId);
     const target = this.audioNodes.get(targetId);
 
-    // Handle control connections (e.g., Piano -> Oscillator)
-    if (sourceMetadata?.isController) {
-      if (!this.controlConnections.has(sourceId)) {
-        this.controlConnections.set(sourceId, []);
-      }
-      this.controlConnections.get(sourceId).push(targetId);
-      console.log(`Control connection: ${sourceId} -> ${targetId}`);
-      return;
-    }
-
-    // Handle audio connections
     if (!source || !target) {
       console.warn(`Cannot connect: source=${!!source}, target=${!!target}`);
       return;
@@ -132,30 +95,11 @@ class AudioGraph {
   }
 
   /**
-   * Disconnect two nodes (audio or control)
+   * Disconnect two audio nodes
    * @param {string} sourceId - Source node ID
    * @param {string} targetId - Target node ID (optional, disconnects all if not provided)
    */
   disconnect(sourceId, targetId = null) {
-    const sourceMetadata = this.nodeMetadata.get(sourceId);
-
-    // Handle control disconnections
-    if (sourceMetadata?.isController) {
-      if (targetId) {
-        const controlTargets = this.controlConnections.get(sourceId) || [];
-        const index = controlTargets.indexOf(targetId);
-        if (index > -1) {
-          controlTargets.splice(index, 1);
-          console.log(`Control disconnection: ${sourceId} -> ${targetId}`);
-        }
-      } else {
-        this.controlConnections.set(sourceId, []);
-        console.log(`${sourceId} disconnected from all controlled nodes`);
-      }
-      return;
-    }
-
-    // Handle audio disconnections
     const source = this.audioNodes.get(sourceId);
 
     if (!source) {
@@ -193,53 +137,6 @@ class AudioGraph {
    */
   getAudioNode(nodeId) {
     return this.audioNodes.get(nodeId) || null;
-  }
-
-  /**
-   * Get controlled nodes for a controller
-   * @param {string} controllerId - Controller node ID
-   * @returns {Array} - Array of controlled node IDs
-   */
-  getControlledNodes(controllerId) {
-    return this.controlConnections.get(controllerId) || [];
-  }
-
-  /**
-   * Trigger note on controlled oscillators
-   * @param {string} controllerId - Controller node ID
-   * @param {number} frequency - Frequency to trigger
-   */
-  triggerControlledNodes(controllerId, frequency) {
-    const controlledNodes = this.getControlledNodes(controllerId);
-
-    controlledNodes.forEach(nodeId => {
-      const audioNode = this.audioNodes.get(nodeId);
-      if (audioNode && audioNode.frequency) {
-        // Set frequency for oscillators
-        audioNode.frequency.setValueAtTime(frequency, audioNode.context.currentTime);
-
-        // Unmute the oscillator
-        if (audioNode.volume) {
-          audioNode.volume.rampTo(-10, 0.02);
-        }
-      }
-    });
-  }
-
-  /**
-   * Release note on controlled oscillators
-   * @param {string} controllerId - Controller node ID
-   */
-  releaseControlledNodes(controllerId) {
-    const controlledNodes = this.getControlledNodes(controllerId);
-
-    controlledNodes.forEach(nodeId => {
-      const audioNode = this.audioNodes.get(nodeId);
-      if (audioNode && audioNode.volume) {
-        // Mute the oscillator completely
-        audioNode.volume.rampTo(-Infinity, 0.2);
-      }
-    });
   }
 
   /**
@@ -297,10 +194,7 @@ class AudioGraph {
     }
 
     // Find all OutputNodes
-    const outputNodes = nodes.filter(node => {
-      const metadata = this.nodeMetadata.get(node.id);
-      return metadata?.isOutput === true;
-    });
+    const outputNodes = nodes.filter(node => node.type === 'outputNode');
 
     console.log(`Found ${outputNodes.length} output nodes`);
 
@@ -446,13 +340,12 @@ class AudioGraph {
       });
     }
 
-    // Now we have all nodes in the chain, but in random order
-    // We need to order them from source (Osc) to destination (Output)
-    const orderedNodes = this.topologicalSort(chainNodeIds, chainEdges);
+    // We have all nodes in the chain - order doesn't matter because
+    // VoiceManager uses two-pass processing: create all nodes first, then connect them
 
     // Convert to template format
     const template = {
-      nodes: orderedNodes.map(nodeId => {
+      nodes: chainNodeIds.map(nodeId => {
         // Check if this node came from an expanded group
         const expandedNode = expandedNodes.find(n => n.id === nodeId);
         const node = expandedNode || nodes.find(n => n.id === nodeId);
@@ -554,8 +447,8 @@ class AudioGraph {
 
     // Build connections array with indices instead of IDs
     chainEdges.forEach(edge => {
-      const sourceIndex = orderedNodes.indexOf(edge.source);
-      const targetIndex = orderedNodes.indexOf(edge.target);
+      const sourceIndex = chainNodeIds.indexOf(edge.source);
+      const targetIndex = chainNodeIds.indexOf(edge.target);
 
       if (sourceIndex !== -1 && targetIndex !== -1) {
         template.connections.push({
@@ -566,50 +459,6 @@ class AudioGraph {
     });
 
     return template;
-  }
-
-  /**
-   * Topological sort to order nodes from source to destination
-   *
-   * @param {Array} nodeIds - Node IDs to sort
-   * @param {Array} edges - Edges between nodes
-   * @returns {Array} Sorted node IDs
-   */
-  topologicalSort(nodeIds, edges) {
-    const inDegree = new Map();
-    const adjList = new Map();
-
-    // Initialize
-    nodeIds.forEach(id => {
-      inDegree.set(id, 0);
-      adjList.set(id, []);
-    });
-
-    // Build graph
-    edges.forEach(edge => {
-      if (nodeIds.includes(edge.source) && nodeIds.includes(edge.target)) {
-        adjList.get(edge.source).push(edge.target);
-        inDegree.set(edge.target, inDegree.get(edge.target) + 1);
-      }
-    });
-
-    // Find nodes with no incoming edges (sources)
-    const queue = nodeIds.filter(id => inDegree.get(id) === 0);
-    const sorted = [];
-
-    while (queue.length > 0) {
-      const current = queue.shift();
-      sorted.push(current);
-
-      adjList.get(current).forEach(neighbor => {
-        inDegree.set(neighbor, inDegree.get(neighbor) - 1);
-        if (inDegree.get(neighbor) === 0) {
-          queue.push(neighbor);
-        }
-      });
-    }
-
-    return sorted;
   }
 
   /**

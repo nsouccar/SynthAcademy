@@ -446,7 +446,11 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
         );
         if (edgesToAdd.length > 0) {
           console.log('Tutorial - Auto-connecting edges for node:', nodeId, edgesToAdd);
-          setEdges((eds) => [...eds, ...edgesToAdd]);
+          setEdges((eds) => {
+            const existingEdgeIds = new Set(eds.map(e => e.id));
+            const newEdges = edgesToAdd.filter(edge => !existingEdgeIds.has(edge.id));
+            return [...eds, ...newEdges];
+          });
         }
 
         setTutorialNodeIds(prev => {
@@ -490,7 +494,11 @@ export function InteractiveTutorial({ presetKey, level = 1, setNodes, setEdges, 
           }));
         if (experimentEdges.length > 0) {
           console.log('Tutorial - Auto-connecting experiment edges:', experimentEdges);
-          setEdges((eds) => [...eds, ...experimentEdges]);
+          setEdges((eds) => {
+            const existingEdgeIds = new Set(eds.map(e => e.id));
+            const newEdges = experimentEdges.filter(edge => !existingEdgeIds.has(edge.id));
+            return [...eds, ...newEdges];
+          });
         }
 
         // Add to tutorialNodeIds so it's recognized in the filter

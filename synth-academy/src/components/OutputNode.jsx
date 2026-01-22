@@ -27,11 +27,7 @@ export function OutputNode({ id }) {
         gain.toDestination();
 
         // Register with audio graph
-        // We mark it as an OUTPUT node so AudioGraph knows this is special
-        audioGraph.registerNode(id, gain, {
-            isOutput: true,
-            type: 'output'
-        });
+        audioGraph.registerNode(id, gain);
 
         return () => {
             audioGraph.unregisterNode(id);
