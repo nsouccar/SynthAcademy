@@ -33,10 +33,7 @@ export function TVNode({ id, data }) {
     console.log('TV Node: Connecting analyser to Destination', { id, gain, analyser });
 
     // Register the gain node with audio graph
-    audioGraph.registerNode(id, gain, {
-      type: 'tv',
-      analyser: analyser
-    });
+    audioGraph.registerNode(id, gain);
 
     return () => {
       if (animationRef.current) {
