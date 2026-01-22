@@ -817,12 +817,16 @@ export function PianoRollNode({ id, data }) {
                         osc.detune.value += spreadOffset;
                     }
 
-                    // Set volume with velocity
-                    osc.volume.value = baseVolume + (velocity - 1) * 10;
+                    // Start oscillator silent and ramp up to prevent click at note start
+                    const targetVolume = baseVolume + (velocity - 1) * 10;
+                    osc.volume.value = -Infinity;
 
                     // Connect oscillator -> merger
                     osc.connect(merger);
                     osc.start(time);
+
+                    // Ramp to target volume over 5ms to smooth note onset
+                    osc.volume.rampTo(targetVolume, 0.005, time);
 
                     oscillators.push(osc);
                 }
@@ -835,23 +839,44 @@ export function PianoRollNode({ id, data }) {
                 envelope.triggerRelease(releaseTime);
 
                 // Schedule cleanup after release completes
-                const cleanupTime = releaseTime + envelopeParams.release + 0.1;
+                // Add extra buffer time to ensure envelope is fully released
+                const cleanupTime = releaseTime + envelopeParams.release + 0.2;
                 Tone.Transport.scheduleOnce(() => {
+                    // Immediately set oscillator volumes to -Infinity (envelope should already be at 0)
                     oscillators.forEach(osc => {
                         try {
-                            osc.stop();
-                            osc.disconnect();
-                            osc.dispose();
+                            if (osc.volume) {
+                                osc.volume.value = -Infinity;
+                            }
                         } catch (e) {}
                     });
-                    try {
-                        envelope.disconnect();
-                        envelope.dispose();
-                    } catch (e) {}
-                    try {
-                        merger.disconnect();
-                        merger.dispose();
-                    } catch (e) {}
+
+                    // Small delay then stop and dispose
+                    setTimeout(() => {
+                        oscillators.forEach(osc => {
+                            try {
+                                osc.stop();
+                            } catch (e) {}
+                        });
+
+                        // Another small delay for disconnect/dispose
+                        setTimeout(() => {
+                            oscillators.forEach(osc => {
+                                try {
+                                    osc.disconnect();
+                                    osc.dispose();
+                                } catch (e) {}
+                            });
+                            try {
+                                envelope.disconnect();
+                                envelope.dispose();
+                            } catch (e) {}
+                            try {
+                                merger.disconnect();
+                                merger.dispose();
+                            } catch (e) {}
+                        }, 20);
+                    }, 10);
                 }, cleanupTime);
             }
 
